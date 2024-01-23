@@ -3,23 +3,14 @@ module main
 import benchmark
 import vectors { Vec2 }
 
-// Available component data types 
-type AllowedDataTypes = int | f64 | string | Vec2 
-
-enum ComponentID {
-	position
-	velocity
-	hitbox
-}
-
-struct ComponentData[T] {
+pub struct ComponentData[T] {
 	name string
 	mut:
 		data []T
 		owner []int
 }
 
-struct ComponentList {
+pub struct ComponentList {
 	mut:
 		c_vec []ComponentData[Vec2]
 		c_int []ComponentData[int]
@@ -28,21 +19,21 @@ struct ComponentList {
 }
 
 // World struct for ECS
-struct World {
+pub struct World {
 	mut:
 		entities []int
 		components ComponentList
 		systems map[string]fn(mut &World)
 }
 
-fn (mut w World) get_component[T](name string) !ComponentData[T]{
+pub fn (mut w World) get_component[T](name string) !ComponentData[T]{
 	mut temp := []ComponentData[T]
 	mut list := &temp
 
 	match T.name {
-		"str" { list = &w.components.c_str }
 		"int" { list = &w.components.c_int }
 		"f64" { list = &w.components.c_f64 }
+		"string" { list = &w.components.c_str }
 		"vectors.Vec2" { list = &w.components.c_vec }
 		else { return error("No component can have the type of ${T.name}") }
 	}
@@ -54,6 +45,16 @@ fn (mut w World) get_component[T](name string) !ComponentData[T]{
 	}
 
 	return error("No component found of name ${name}")
+}
+
+pub fn (mut w World) register_component[T](name string) !{
+	match T.name {
+		"int" { w.components.c_int << ComponentData[int]{ name, []int, []int } }
+		"f64" { w.components.c_f64 << ComponentData[f64]{ name, []f64, []int } }
+		"string" { w.components.c_str << ComponentData[string]{ name, []string, []int } }
+		"vectors.Vec2" {  w.components.c_vec << ComponentData[Vec2]{ name, []Vec2, []int } }
+		else { return error("This data type is not allowed")}
+	}
 }
 
 fn main() {
@@ -78,16 +79,14 @@ fn main() {
 	}
 	wld.components.c_vec << v_data
 
+	wld.register_component[Vec2]("Monka")!
+
 	/* ==== Add systems ==== */
 	wld.systems = {
 		...wld.systems
 		"move": fn (mut wld &World) {
-			mut position_c := wld.components.c_vec[ComponentID.position]
-			velocity_c := wld.components.c_vec[ComponentID.velocity]
-
-			/* This approach is slower, not sure abt safety tho */
-			// wld.get_component[Vec2]("position") or { panic(err) }
-			// wld.get_component[Vec2]("velocity") or { panic(err) }
+			mut position_c := wld.components.c_vec[0]
+			velocity_c := wld.components.c_vec[1]
 
 			for index in 0 .. velocity_c.owner.len {
 				owner := velocity_c.owner[index]
