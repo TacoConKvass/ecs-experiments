@@ -7,7 +7,6 @@
 - CPU: Intel Core i5-1035G1
 - OS: Windows 10, 64 bit
 ```All entities: 100; Moving entities: 50
-
  SPENT     0.004 ms in move_test: 1 repetitions
  SPENT     0.016 ms in move_test: 10 repetitions
  SPENT     0.141 ms in move_test: 100 repetitions
