@@ -76,7 +76,7 @@ fn main() {
 	move_test(mut wld, 10_000)
 	move_test(mut wld, 100_000)
 	move_test(mut wld, 1_000_000)
-	println("\n"
+	println("\n")
 }
 
 fn move_test(mut wld World, repetition int) {
