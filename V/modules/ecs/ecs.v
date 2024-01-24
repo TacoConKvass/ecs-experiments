@@ -1,4 +1,4 @@
-module main
+module ecs
 
 import benchmark
 import vectors { Vec2 }
