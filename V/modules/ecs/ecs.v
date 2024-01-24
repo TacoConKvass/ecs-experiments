@@ -4,14 +4,28 @@ import benchmark
 import vectors { Vec2 }
 
 pub struct ComponentData[T] {
-	name string
-	mut:
+	pub:
+		name string
+	pub mut:
 		data []T
 		owner []int
 }
 
+pub fn (mut c ComponentData[T]) add_entity(data T, entity_id int) {
+	c.data << data
+	c.owner << entity_id
+}
+
+pub fn (mut c ComponentData[T]) add_entity_batch(data []T, entity_id []int) {
+	if data.len != entity_id.len {
+		panic("Amount of data points does not equal the amount of entities")
+	}
+	c.data << data
+	c.owner << entity_id
+}
+
 pub struct ComponentList {
-	mut:
+	pub mut:
 		c_vec []ComponentData[Vec2]
 		c_int []ComponentData[int]
 		c_f64 []ComponentData[f64]
@@ -20,13 +34,13 @@ pub struct ComponentList {
 
 // World struct for ECS
 pub struct World {
-	mut:
-		entities []int
-		components ComponentList
-		systems map[string]fn(mut &World)
+	pub mut:	
+			entities []int
+			components ComponentList
+			systems map[string]fn(mut &World)
 }
 
-pub fn (mut w World) get_component[T](name string) !ComponentData[T]{
+pub fn (mut w World) get_component[T](name string) !&ComponentData[T]{
 	mut temp := []ComponentData[T]
 	mut list := &temp
 
@@ -40,7 +54,9 @@ pub fn (mut w World) get_component[T](name string) !ComponentData[T]{
 
 	for component in list {
 		if component.name == name {
-			return component
+			unsafe {
+				return &list[list.index(component)]
+			}
 		}
 	}
 
@@ -57,7 +73,12 @@ pub fn (mut w World) register_component[T](name string) !{
 	}
 }
 
+pub fn (mut w World) register_system(name string) {
+
+}
+
 fn main() {
+
 	entity_count := 100
 	println("All entities: ${entity_count}; Moving entities: ${entity_count/2}")
 
@@ -78,8 +99,6 @@ fn main() {
 		wld.entities.filter(it % 2 == 0)
 	}
 	wld.components.c_vec << v_data
-
-	wld.register_component[Vec2]("Monka")!
 
 	/* ==== Add systems ==== */
 	wld.systems = {
@@ -105,6 +124,9 @@ fn main() {
 	move_test(mut wld, 100_000)
 	move_test(mut wld, 1_000_000)
 	println("\n")
+
+	println(wld.get_component[Vec2]("position")!)
+	println(wld.get_component[Vec2]("velocity")!.owner)
 }
 
 fn move_test(mut wld World, repetition int) {
