@@ -4,8 +4,9 @@ import math
 
 // Vector2 definition
 pub struct Vec2 {
-	x f64
-	y f64
+	pub:
+		x f64
+		y f64
 }
 
 pub fn (v Vec2) add(v2 Vec2) Vec2 {
@@ -20,5 +21,29 @@ pub fn (v Vec2) length() f64 {
 
 pub fn (v Vec2) normalize() Vec2 {
 	result := Vec2{ v.x / v.length(), v.y / v.length() }
+	return result
+}
+
+pub fn (v Vec2) get_angle() f64 {
+	result := if v.y < 0 {
+		2 * math.pi - math.acos(v.x / v.length())
+	} else {
+		math.acos(v.x / v.length())
+	}
+	return result
+} 
+
+pub fn (v Vec2) rotated_towards(angleInRadians f64) Vec2 {
+	result := match angleInRadians {
+		math.pi { Vec2{ -v.length(), 0 } }
+		math.pi / 2 { Vec2{ 0, v.length() } }
+		math.pi * 3 / 2 { Vec2{ 0, -v.length() } }
+		else { Vec2{ math.cos(angleInRadians) * v.length(), math.sin(angleInRadians) * v.length() } }
+	}
+	return result
+}
+
+pub fn (v Vec2) rotated_by(angleInRadians f64) Vec2	{
+	result := v.rotated_towards(v.get_angle() + angleInRadians)
 	return result
 }
