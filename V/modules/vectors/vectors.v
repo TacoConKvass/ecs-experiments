@@ -24,6 +24,11 @@ pub fn (v Vec2) normalize() Vec2 {
 	return result
 }
 
+pub fn (v Vec2) distance_to(v2 Vec2) f64 {
+	result := Vec2{math.abs(v.x - v2.x), math.abs(v.y - v2.y)}.length()
+	return result
+}
+
 pub fn (v Vec2) get_angle() f64 {
 	result := if v.y < 0 {
 		2 * math.pi - math.acos(v.x / v.length())
