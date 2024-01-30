@@ -12,7 +12,7 @@ const color := [gx.red, gx.blue, gx.yellow, gx.green]
 const window_width = 1280
 const window_height = 720
 const entity_count = 20000
-const entity_size = 1
+const entity_size = 2
 const draw_per_call = 600
 
 struct App {
