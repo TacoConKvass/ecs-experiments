@@ -11,9 +11,9 @@ import benchmark
 const color := [gx.red, gx.blue, gx.yellow, gx.green]
 const window_width = 1280
 const window_height = 720
-const entity_count = 16000
-const entity_size = 2
-const draw_per_call = 1000
+const entity_count = 20000
+const entity_size = 1
+const draw_per_call = 600
 
 struct App {
 	mut:
@@ -61,16 +61,6 @@ fn main() {
 				if (position_c.data[owner].y > window_height && velocity_c.data[index].y > 0) || (position_c.data[owner].y < 0 && velocity_c.data[index].y < 0) {
 					velocity_c.data[index] = Vec2{velocity_c.data[index].x, -velocity_c.data[index].y}.rotated_by(math.radians(rand.f64_in_range(-10, 10) or { 0 }))
 				}
-
-				/*
-				if (position_c.data[owner].x > window_width && velocity_c.data[index].x > 0) || (position_c.data[owner].x < 0 && velocity_c.data[index].x < 0) {
-					velocity_c.data[index] = Vec2{-velocity_c.data[index].x, velocity_c.data[index].y}
-				}
-
-				if (position_c.data[owner].y > window_height && velocity_c.data[index].y > 0) || (position_c.data[owner].y < 0 && velocity_c.data[index].y > 0) {
-					velocity_c.data[index] = Vec2{-velocity_c.data[index].x, velocity_c.data[index].y}
-				}
-				*/
 			}
 		}
 	}
