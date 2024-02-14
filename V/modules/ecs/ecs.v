@@ -3,7 +3,6 @@ module ecs
 import benchmark
 import vectors { Vec2 }
 
-@[minify]
 pub struct ComponentData[T] {
 	pub:
 		name string
@@ -41,7 +40,6 @@ pub struct World {
 			systems map[string]fn(mut &World)
 }
 
-@[inline]
 pub fn (mut w World) get_component[T](name string) !ComponentData[T]{
 	mut temp := []ComponentData[T]
 	mut list := &temp
@@ -73,14 +71,9 @@ pub fn (mut w World) register_component[T](name string) !{
 	}
 }
 
-pub fn (mut w World) register_system(name string) {
-
-}
-
-fn move_test(mut wld World, repetition int) {
-	mut b := benchmark.start()
-	for rep in 0 .. repetition {
-		wld.systems["move"](mut &wld)
+pub fn (mut w World) register_system(name string, func fn (mut wld &World)) {
+	w.systems = {
+		...w.systems
+		name: func
 	}
-	b.measure("move_test: ${repetition} repetitions")
 }
