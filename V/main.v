@@ -7,12 +7,13 @@ import ecs
 import rand
 import math
 
+import benchmark
+
 const color := [gx.red, gx.blue, gx.yellow, gx.green]
 const window_width = 1280
 const window_height = 720
-const entity_count = 20000
-const entity_size = 2
-const draw_per_call = 600
+const entity_count = 1000
+const draw_per_call = 100
 
 struct App {
 	mut:
@@ -67,27 +68,33 @@ fn main() {
 }
 
 fn frame(mut app App) {
+	mut bg := benchmark.start()
+	mut b := benchmark.start()
 	app.world.systems["handle_movement"](mut app.world)
-
+	b.measure("Handle movement")
+	
 	mut pos_c := app.world.get_component[Vec2]("position") or { panic("Position not found") }
 
 	app.gg.begin()
 	app.gg.end()
 
+	mut b2 := benchmark.start()
 	for rep in 0 .. pos_c.data.len / draw_per_call {
 		app.gg.begin()
 			
 		mut temp := Vec2{}
 		for entity in pos_c.data[rep*draw_per_call .. (rep + 1)*draw_per_call] {
 			if entity.distance_to(temp) > 2 {
-				app.gg.draw_circle_filled(f32(entity.x), f32(entity.y), entity_size, color[rep%4])
+				app.gg.draw_pixel(f32(entity.x), f32(entity.y), color[rep%4])
 			}
 			temp = entity
 		}
 		app.gg.end(how: .passthru)
 	} 
+	b2.measure("Draw")
 
 	app.gg.begin()
 	app.gg.show_fps()
 	app.gg.end(how: .passthru)
+	bg.measure("Frame")
 }
