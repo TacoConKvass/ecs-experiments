@@ -14,6 +14,11 @@ pub fn (v Vec2) add(v2 Vec2) Vec2 {
 	return result
 }
 
+pub fn (v Vec2) substract(v2 Vec2) Vec2 {
+	result := Vec2 {v.x - v2.x, v.y - v2.y}
+	return result
+}
+
 pub fn (v Vec2) length() f64 {
 	len := math.sqrt(v.x * v.x + v.y * v.y)
 	return len
@@ -50,5 +55,25 @@ pub fn (v Vec2) rotated_towards(angleInRadians f64) Vec2 {
 
 pub fn (v Vec2) rotated_by(angleInRadians f64) Vec2	{
 	result := v.rotated_towards(v.get_angle() + angleInRadians)
+	return result
+}
+
+pub fn (v Vec2) direction_to(v2 Vec2) Vec2 {
+	result := Vec2{-(v.x - v2.x), -(v.y-v2.y)}
+	return result
+}
+
+pub fn (v Vec2) direction_from(v2 Vec2) Vec2 {
+	result := Vec2{v.x - v2.x, v.y-v2.y}
+	return result
+}
+
+pub fn (v Vec2) scale(scalar f64) Vec2 {
+	result := Vec2{v.x * scalar, v.y * scalar}
+	return result
+} 
+
+pub fn (v Vec2) get_dot(v2 Vec2) f64 {
+	result := (v.x * v2.x) - (v.y * v2.y)
 	return result
 }
