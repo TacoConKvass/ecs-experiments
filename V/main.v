@@ -10,9 +10,10 @@ import math
 const color := [gx.red, gx.blue, gx.yellow, gx.green]
 const window_width = 1280
 const window_height = 720
-const entity_count = 2
-const draw_per_call = 1
-const entity_size = 40
+const entity_count = 2000
+const draw_per_call = 1000
+const entity_size = 2
+const entity_velocity = 3
 
 struct App {
 	mut:
@@ -41,7 +42,7 @@ fn main() {
 	mut vel_c := &app.world.components.c_vec[1]
 
 	pos_c.add_entity_batch( []Vec2{len:entity_count, init: Vec2{window_width/2, window_height/2}}, []int{len: entity_count, init: index+1})
-	vel_c.add_entity_batch( []Vec2{len:entity_count, init: Vec2{3, 0}.rotated_by(index) }, []int{len: entity_count, init: index+1})
+	vel_c.add_entity_batch( []Vec2{len:entity_count, init: Vec2{entity_velocity, 0}.rotated_by(index) }, []int{len: entity_count, init: index+1})
 
 	handle_mov := fn (mut wld &ecs.World) {
 			mut position_c := wld.get_component[Vec2]("position") or { panic("Position not found") }
@@ -79,8 +80,8 @@ fn main() {
 			return 0
 		})
 
-		for rep in 0 .. position_data_x.len /* / 50*/ {
-			mut position_data_y := position_data_x.clone()/*[rep * 50 .. (rep+1) * 50]*/
+		for rep in 0 .. position_data_x.len / 50 {
+			mut position_data_y := position_data_x[rep * 50 .. (rep+1) * 50].clone()
 			position_data_y.sort_with_compare(fn (a &Vec2, b &Vec2) int {
 				if a.y > b.y {
 					return 1
@@ -102,8 +103,8 @@ fn main() {
 						owner_index := velocity_c.owner.index(owner_id)
 						owner2_index := velocity_c.owner.index(owner2_id)
 						old_vel1 := velocity_c.data[owner_index]
-						velocity_c.data[owner_index]  = position_data_y[entity].substract(position_data_y[entity + 1]).scale(velocity_c.data[owner_index].substract(velocity_c.data[owner2_index]).get_dot(position_data_y[entity].substract(position_data_y[entity + 1])) / math.pow(position_data_y[entity].distance_to(position_data_y[entity + 1]), 2)).normalize().scale(8)
-						velocity_c.data[owner2_index] = position_data_y[entity + 1].substract(position_data_y[entity]).scale(velocity_c.data[owner2_index].substract(old_vel1).get_dot(position_data_y[entity + 1].substract(position_data_y[entity])) / math.pow(position_data_y[entity + 1].distance_to(position_data_y[entity]), 2)).normalize().scale(8)
+						velocity_c.data[owner_index]  = position_data_y[entity].substract(position_data_y[entity + 1]).scale(velocity_c.data[owner_index].substract(velocity_c.data[owner2_index]).get_dot(position_data_y[entity].substract(position_data_y[entity + 1])) / math.pow(position_data_y[entity].distance_to(position_data_y[entity + 1]), 2)).normalize().scale(entity_velocity)
+						velocity_c.data[owner2_index] = position_data_y[entity + 1].substract(position_data_y[entity]).scale(velocity_c.data[owner2_index].substract(old_vel1).get_dot(position_data_y[entity + 1].substract(position_data_y[entity])) / math.pow(position_data_y[entity + 1].distance_to(position_data_y[entity]), 2)).normalize().scale(entity_velocity)
 					}
 				}
 			}

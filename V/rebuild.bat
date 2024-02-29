@@ -1,2 +1,2 @@
 del v.exe
-v .
+v -w -cg .

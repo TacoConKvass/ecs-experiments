@@ -1,6 +1,5 @@
 module ecs
 
-import benchmark
 import vectors { Vec2 }
 
 pub struct ComponentData[T] {
