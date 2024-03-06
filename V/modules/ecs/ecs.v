@@ -1,78 +1,130 @@
 module ecs
 
-import vectors { Vec2 }
-
-pub struct ComponentData[T] {
-	pub:
-		name string
-	pub mut:
-		data []T
-		owner []int
-}
-
-pub fn (mut c ComponentData[T]) add_entity(data T, entity_id int) {
-	c.data << data
-	c.owner << entity_id
-}
-
-pub fn (mut c ComponentData[T]) add_entity_batch(data []T, entity_id []int) {
-	if data.len != entity_id.len {
-		panic("Amount of data points does not equal the amount of entities")
-	}
-	c.data << data
-	c.owner << entity_id
-}
-
-pub struct ComponentList {
-	pub mut:
-		c_vec []ComponentData[Vec2]
-		c_int []ComponentData[int]
-		c_f64 []ComponentData[f64]
-		c_str []ComponentData[string]
-}
-
-// World struct for ECS
 pub struct World {
-	pub mut:	
-			entities []int
-			components ComponentList
-			systems map[string]fn(mut &World)
+	mut:	
+		systems		[]System
+		components	[]IComponent
+		entities	[]int
 }
 
-pub fn (mut w World) get_component[T](name string) !ComponentData[T]{
-	mut temp := []ComponentData[T]
-	mut list := &temp
+pub fn (mut w World) add_system(system System) bool{
+	for exisiting_system in w.systems {
+		if exisiting_system.name == system.name {
+			println("A system with this name already exists")
+			return false
+		}
+	}
+	w.systems << system
+	return true
+}
 
-	match T.name {
-		"int" { list = &w.components.c_int }
-		"f64" { list = &w.components.c_f64 }
-		"string" { list = &w.components.c_str }
-		"vectors.Vec2" { list = &w.components.c_vec }
-		else { return error("No component can have the type of ${T.name}") }
+pub fn (w World) run_system(name string) bool {
+	for system in w.systems {
+		if system.name == name {
+			system.action()
+			return true
+		}
 	}
 
-	for component in list {
-		if component.name == name {
+	println("A system with that name was not found")
+	return false
+}
+
+pub fn (mut w World) add_component(component IComponent) bool {
+	if component in w.components {
+		println("This component already exists")
+		return false
+	}
+
+	w.components << component
+	return true
+}
+
+pub fn (mut w World) get_component<T>() ?&T {
+	for component in w.components {
+		if component is T {
 			return component
 		}
 	}
 
-	return error("No component found of name ${name}")
+	println("Component of that type was not found")
+	return none
 }
 
-pub fn (mut w World) register_component[T](name string) !{
-	match T.name {
-		"int" { w.components.c_int << ComponentData[int]{ name, []int, []int } }
-		"f64" { w.components.c_f64 << ComponentData[f64]{ name, []f64, []int } }
-		"string" { w.components.c_str << ComponentData[string]{ name, []string, []int } }
-		"vectors.Vec2" {  w.components.c_vec << ComponentData[Vec2]{ name, []Vec2, []int } }
-		else { return error("This data type is not allowed")}
+pub fn (mut w World) add_entities(ids []int) bool {
+	mut result := []int{}
+	for id in ids {
+		if id in w.entities {
+			println("Entity with an id of ${id} already exists")
+			return false
+		}
+
+		if id in result {
+			println("You already used the id of ${id}. All ids should be unique")
+			return false
+		}
+		result << id
 	}
+
+	w.entities << result
+	return true
 }
 
-pub fn (mut w World) register_system(name string, func fn (mut wld &World)) {
-	w.systems = {
-		...w.systems
-		name: func
+pub fn (mut w World) get_entities() []int {
+	return w.entities
+}
+
+pub fn (mut w World) add_entity_to_component<T, V>(id int, value V) bool {
+	if id in w.entities {
+		mut comp := w.get_component<T>() or {
+			return false
+		}
+
+		comp.add_entity(id, value)
+
+		return true
 	}
+		
+	println("An entity with id of ${id} does not exist")
+	return false
+}
+
+pub fn (mut w World) add_entity_batch_to_component<T, V>(id []int, value []V) bool {
+	mut comp := w.get_component<T>() or {
+		return false
+	}
+
+	for i in id{
+		if i in w.entities {
+
+			if id.len != value.len {
+				println("The list of ids must have the same length as the listo of values")
+			}
+
+			for ii in 0 .. id.len {
+				comp.add_entity(id[ii], value[ii])
+			}
+
+			return true
+		}
+		println("An entity with the id of ${i} does not exist")
+		return false
+	}
+
+	println("You should not be here. Report this case")
+	return false
+}
+
+pub interface IComponent {
+	is_component bool
+}
+
+pub struct Component {
+	is_component bool
+}
+
+pub struct System {
+	pub:
+		name 	 string @[required]
+		action 	 fn()	@[required]
 }

@@ -59,12 +59,7 @@ pub fn (v Vec2) rotated_by(angleInRadians f64) Vec2	{
 }
 
 pub fn (v Vec2) direction_to(v2 Vec2) Vec2 {
-	result := Vec2{-(v.x - v2.x), -(v.y-v2.y)}
-	return result
-}
-
-pub fn (v Vec2) direction_from(v2 Vec2) Vec2 {
-	result := Vec2{v.x - v2.x, v.y-v2.y}
+	result := Vec2{v2.x - v.x, v2.y - v.y}
 	return result
 }
 
