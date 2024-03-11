@@ -31,7 +31,7 @@ fn main() {
 	b.measure("Register + get")
 }
 
-/*
+
 fn main() {
 	mut app := &App {
 		unsafe { nil },
@@ -149,4 +149,3 @@ fn frame(mut app App) {
 	app.gg.show_fps()
 	app.gg.end(how: .passthru)
 }
-*/

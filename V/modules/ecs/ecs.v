@@ -1,7 +1,7 @@
 module ecs
 
 pub struct World {
-	mut:	
+	pub mut:	
 		systems		[]System
 		components	[]IComponent
 		entities	[]int
@@ -14,14 +14,15 @@ pub fn (mut w World) add_system(system System) bool{
 			return false
 		}
 	}
+
 	w.systems << system
 	return true
 }
 
-pub fn (w World) run_system(name string) bool {
+pub fn (w World) run_system(name string, mut args []IComponent) bool {
 	for system in w.systems {
 		if system.name == name {
-			system.action()
+			system.action(mut args)
 			return true
 		}
 	}
@@ -32,7 +33,7 @@ pub fn (w World) run_system(name string) bool {
 
 pub fn (mut w World) add_component(component IComponent) bool {
 	if component in w.components {
-		println("This component already exists")
+		println("${component} already exists")
 		return false
 	}
 
@@ -68,10 +69,6 @@ pub fn (mut w World) add_entities(ids []int) bool {
 
 	w.entities << result
 	return true
-}
-
-pub fn (mut w World) get_entities() []int {
-	return w.entities
 }
 
 pub fn (mut w World) add_entity_to_component<T, V>(id int, value V) bool {
@@ -126,5 +123,5 @@ pub struct Component {
 pub struct System {
 	pub:
 		name 	 string @[required]
-		action 	 fn()	@[required]
+		action 	 fn(mut []IComponent)	@[required]
 }

@@ -4,7 +4,7 @@ import math
 
 // Vector2 definition
 pub struct Vec2 {
-	pub:
+	pub mut:
 		x f64
 		y f64
 }
