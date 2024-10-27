@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 
 const NameToType = std.meta.Tuple(&.{
     [:0]const u8,
@@ -50,15 +51,19 @@ pub fn World(comptime types: []const type, Entity: type) type {
                 try field.add_entity(entity, component, this.allocator);
 
                 // Add to bit mask of the entity
-                var shift_amount: ComponentMask = 0;
-                inline for (types) |Type| {
-                    if (Type == @TypeOf(component)) {
-                        break;
-                    }
-                    shift_amount += 1;
-                }
+                const shift_amount = indexOfTypeInArray(@TypeOf(component), types);
                 this.entities[entity] = this.entities[entity] | (@as(ComponentMask, 1) <<| shift_amount);
             }
+        }
+        pub fn entity_has(this: *@This(), entity: Entity, components: []const type) bool {
+            const one: ComponentMask = 1;
+            var components_to_check: ComponentMask = 0;
+            inline for (components) |component| {
+                _ = @field(this.components, typeNameToFieldName(component));
+                const shift_amount = indexOfTypeInArray(component, types);
+                components_to_check |= one <<| shift_amount;
+            }
+            return (this.entities[entity] & components_to_check) == components_to_check;
         }
     };
 }
@@ -117,10 +122,15 @@ fn typeNameToFieldName(T: type) [:0]const u8 {
     return result[dot + 1 ..];
 }
 
-test "Test component" {
-    const Test = Component(f32, u4);
-    _ = Test.init();
-    std.debug.print("{}\n", .{Test.Type});
+fn indexOfTypeInArray(comptime T: type, array: []const type) usize {
+    var index: usize = 0;
+    inline for (array, 0..) |Type, i| {
+        if (Type == T) {
+            index = i;
+            break;
+        }
+    }
+    return index;
 }
 
 const Position = struct { data: @Vector(2, f32) };
@@ -128,21 +138,43 @@ const Velocity = struct { data: @Vector(2, f32) };
 const Hitbox = struct { data: @Vector(2, u16) };
 
 test "World" {
-    const Struct = World(&[_]type{
-        Hitbox,
-        Position,
-        Velocity,
-    }, u4);
+    const types = &[_]type{ Hitbox, Position, Velocity };
+    const ComponentMask = std.meta.Int(.unsigned, types.len);
+    const MaxEntities = u4;
+    const Struct = World(types, MaxEntities);
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    var world = Struct.init(allocator);
+    const world = Struct.init(allocator);
+
+    assert(std.mem.eql(ComponentMask, &world.entities, &[_]ComponentMask{0} ** std.math.maxInt(MaxEntities)));
+    std.debug.print("World creation: Passed\n", .{});
+}
+
+const TestWorld = World(&[_]type{
+    Position,
+    Velocity,
+    Hitbox,
+}, u4);
+
+test "Entity has component check" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    var world = TestWorld.init(allocator);
+
     for (0..4) |i| {
         try world.add_entity(@truncate(i), .{
             Position{ .data = @Vector(2, f32){ 0, 4 } },
             Velocity{ .data = @Vector(2, f32){ 1, 0 } },
         });
     }
-    std.debug.print("{any}\n", .{world});
-    // std.debug.print("{}\n", .{world.components.Position});
+
+    std.debug.print("Entity 2 has Position & Velocity: {}\n", .{world.entity_has(2, &.{
+        Velocity,
+        Position,
+    })});
+    std.debug.print("Entity 3 has Position & Hitbox: {}\n", .{world.entity_has(2, &.{
+        Hitbox,
+        Position,
+    })});
 }
