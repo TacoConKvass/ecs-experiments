@@ -24,6 +24,9 @@ pub fn World(comptime types: []const type, Entity: type) type {
             EntityAlreadyExists,
         };
 
+        const MaxLengthType: type = Entity;
+        comptime max_length: Entity = std.math.maxInt(Entity),
+
         allocator: std.mem.Allocator,
 
         entities: [std.math.maxInt(Entity)]ComponentMask,
@@ -68,34 +71,51 @@ pub fn World(comptime types: []const type, Entity: type) type {
             return (this.entities[entity] & components_to_check) == components_to_check;
         }
 
-        const QueryType = struct {
-            entities: []Entity,
-            component_data: []*anyopaque,
-        };
+        pub fn Query(comptime searched: []const type) type {
+            return struct {
+                entities: []Record(searched, Entity),
+            };
+        }
 
-        pub fn query(this: *@This(), comptime searched: []const type) !QueryType {
-            var aggregated_entities: [std.math.maxInt(Entity)]Entity = undefined;
+        pub fn query(this: *@This(), comptime searched: []const type) Query(searched) {
+            var records: [this.max_length]Record(searched, Entity) = undefined;
             var length: usize = 0;
-            for (this.entities, 0..) |_, index| {
-                if (this.entity_has(@truncate(index), searched)) {
-                    aggregated_entities[length] = @truncate(index);
+            for (this.entities, 0..) |_, i| {
+                if (this.entity_has(@truncate(i), searched)) {
+                    var record: Record(searched, Entity) = undefined;
+                    record.entity = @truncate(i);
+
+                    inline for (searched) |T| {
+                        var record_field = @field(record, meta.typeNameToFieldName(T));
+                        var component = @field(this.components, meta.typeNameToFieldName(T));
+                        record_field = &component.dense[component.sparse[i].?];
+                    }
+
+                    records[length] = record;
                     length += 1;
                 }
             }
 
-            var components_stored: [types.len]*anyopaque = undefined;
-            var index: usize = 0;
-            inline for (searched) |component| {
-                components_stored[index] = @ptrCast(&(@field(this.components, meta.typeNameToFieldName(component)).dense));
-                index += 1;
-            }
-
-            return QueryType{
-                .entities = aggregated_entities[0..length],
-                .component_data = components_stored[0..searched.len],
+            return Query(searched){
+                .entities = records[0..length],
             };
         }
     };
+}
+
+pub fn Record(comptime searched: []const type, Entity: type) type {
+    var fields_tuple: [searched.len + 1]NameToType = undefined;
+    fields_tuple[0] = .{
+        "entity",
+        Entity,
+    };
+    for (searched, 0..) |T, index| {
+        fields_tuple[index + 1] = .{
+            meta.typeNameToFieldName(T),
+            *T,
+        };
+    }
+    return meta.BuildStruct(fields_tuple);
 }
 
 pub fn Component(comptime T: type, Entity: type) type {
@@ -216,8 +236,10 @@ test "Query" {
         });
     }
 
-    const query = try world.query(&[_]type{Position});
-    std.debug.print("{}\n", .{query});
+    const query = world.query(&[_]type{Position});
+    std.debug.print("{any}\n", .{query});
 
-    std.debug.print("\n", .{});
+    std.debug.print("{any}\n", .{query.entities});
+
+    std.debug.print("{}\n", .{world.components.Position});
 }
