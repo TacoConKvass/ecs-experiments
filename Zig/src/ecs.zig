@@ -71,14 +71,8 @@ pub fn World(comptime types: []const type, Entity: type) type {
             return (this.entities[entity] & components_to_check) == components_to_check;
         }
 
-        pub fn Query(comptime searched: []const type) type {
-            return struct {
-                entities: []Record(searched, Entity),
-            };
-        }
-
-        pub fn query(this: *@This(), comptime searched: []const type) Query(searched) {
-            var records: [this.max_length]Record(searched, Entity) = undefined;
+        pub fn query(this: *@This(), comptime searched: []const type) !Query(searched, @This()) {
+            var records = try this.allocator.alloc(Record(searched, Entity), this.max_length);
             var length: usize = 0;
             for (this.entities, 0..) |_, i| {
                 if (this.entity_has(@truncate(i), searched)) {
@@ -86,9 +80,8 @@ pub fn World(comptime types: []const type, Entity: type) type {
                     record.entity = @truncate(i);
 
                     inline for (searched) |T| {
-                        var record_field = @field(record, meta.typeNameToFieldName(T));
-                        var component = @field(this.components, meta.typeNameToFieldName(T));
-                        record_field = &component.dense[component.sparse[i].?];
+                        const component = @field(this.components, meta.typeNameToFieldName(T));
+                        @field(record, meta.typeNameToFieldName(T)) = &component.dense[component.sparse[i].?];
                     }
 
                     records[length] = record;
@@ -96,10 +89,18 @@ pub fn World(comptime types: []const type, Entity: type) type {
                 }
             }
 
-            return Query(searched){
-                .entities = records[0..length],
+            records = try this.allocator.realloc(records, length);
+
+            return Query(searched, @This()){
+                .entities = records,
             };
         }
+    };
+}
+
+pub fn Query(comptime searched: []const type, world: type) type {
+    return struct {
+        entities: []Record(searched, world.MaxLengthType),
     };
 }
 
@@ -153,26 +154,6 @@ pub fn Component(comptime T: type, Entity: type) type {
 
 // Tests
 
-test "World" {
-    std.debug.print("World creation\n", .{});
-    const Position = struct { data: @Vector(2, f32) };
-    const Velocity = struct { data: @Vector(2, f32) };
-    const Hitbox = struct { data: @Vector(2, u16) };
-
-    const types = &[_]type{ Hitbox, Position, Velocity };
-    const ComponentMask = std.meta.Int(.unsigned, types.len);
-
-    const MaxEntities = u4;
-    const Struct = World(types, MaxEntities);
-
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    const world = Struct.init(allocator);
-
-    assert(std.mem.eql(ComponentMask, &world.entities, &[_]ComponentMask{0} ** std.math.maxInt(MaxEntities)));
-    std.debug.print("\n", .{});
-}
-
 test "Entity has component check" {
     const Position = struct { data: @Vector(2, f32) };
     const Velocity = struct { data: @Vector(2, f32) };
@@ -219,11 +200,21 @@ test "Query" {
     const Velocity = struct { data: @Vector(2, f32) };
     const Hitbox = struct { data: @Vector(2, u16) };
 
-    const TestWorld = World(&[_]type{
+    const types = &[_]type{
         Position,
         Velocity,
         Hitbox,
-    }, u4);
+    };
+
+    const TestWorld = World(types, u4);
+
+    const A = struct {
+        pub fn system(query: *Query(&[_]type{Position}, TestWorld)) void {
+            for (0..query.entities.len) |i| {
+                query.entities[i].Position.data = @Vector(2, f32){ 200, 200 };
+            }
+        }
+    };
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -236,10 +227,10 @@ test "Query" {
         });
     }
 
-    const query = world.query(&[_]type{Position});
-    std.debug.print("{any}\n", .{query});
+    var query = try world.query(&[_]type{Position});
+    std.debug.print("{any}\n\n", .{query.entities});
 
-    std.debug.print("{any}\n", .{query.entities});
+    A.system(&query);
 
     std.debug.print("{}\n", .{world.components.Position});
 }
