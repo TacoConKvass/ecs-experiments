@@ -7,6 +7,8 @@ const NameToType = std.meta.Tuple(&.{
     type,
 });
 
+/// Defines the place where all components and entities are held
+/// Provided types are transformed into components and are accessible via world.components.TypeName
 pub fn World(comptime types: []const type, Entity: type) type {
     var fields: [types.len]NameToType = undefined;
     for (types, 0..) |T, index| {
@@ -20,19 +22,29 @@ pub fn World(comptime types: []const type, Entity: type) type {
     const ComponentMask = std.meta.Int(.unsigned, types.len);
 
     return struct {
+        /// Possible to receive when calling add_entity
         const Error = error{
             EntityAlreadyExists,
+            OutOfEntitySlots,
         };
 
-        const MaxLengthType: type = Entity;
-        comptime max_length: Entity = std.math.maxInt(Entity),
+        const EntityType: type = Entity;
+        const max_length: Entity = std.math.maxInt(Entity);
 
+        /// Allocator used for all entity related allocations
         allocator: std.mem.Allocator,
 
+        /// Stores information on which components the entity has, as a bit mask
+        /// The entities ID is its index in this array
         entities: [std.math.maxInt(Entity)]ComponentMask,
+
+        /// Stores all generated components
         components: ComponentStore,
+
+        /// Signifies that the amount of entities changed
         updated: bool = false,
 
+        /// Initializes the object
         pub fn init(allocator: std.mem.Allocator) @This() {
             const component: ComponentStore = undefined;
 
@@ -48,6 +60,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
             };
         }
 
+        /// Adds the specified components to the entity with the specified ID
         pub fn add_entity(this: *@This(), entity: Entity, components: anytype) !void {
             if (this.entities[entity] != 0) return Error.EntityAlreadyExists;
             inline for (components) |component| {
@@ -63,6 +76,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
             this.updated = true;
         }
 
+        /// Checks if the specified entity has the queried components
         pub fn entity_has(this: *@This(), entity: Entity, components: []const type) bool {
             const one: ComponentMask = 1;
             var components_to_check: ComponentMask = 0;
@@ -74,8 +88,10 @@ pub fn World(comptime types: []const type, Entity: type) type {
             return (this.entities[entity] & components_to_check) == components_to_check;
         }
 
+        /// Returns all entities that have the specified components as a Query.
+        /// Might throw an error on allocation.
         fn query(this: *@This(), comptime searched: []const type) !Query(searched, @This()) {
-            var records = try this.allocator.alloc(Record(searched, Entity), this.max_length);
+            var records = try this.allocator.alloc(Record(searched, Entity), max_length);
             var length: usize = 0;
             for (this.entities, 0..) |_, i| {
                 if (this.entity_has(@truncate(i), searched)) {
@@ -101,22 +117,24 @@ pub fn World(comptime types: []const type, Entity: type) type {
     };
 }
 
+/// Stores all entities that have components of the searched types
 pub fn Query(comptime searched: []const type, ChosenWorld: type) type {
     return struct {
         pub var cache: @This() = undefined;
-        entities: []Record(searched, ChosenWorld.MaxLengthType),
+        entities: []Record(searched, ChosenWorld.EntityType),
 
+        /// Executes the query, caching the result.
         pub fn execute(world: *ChosenWorld) !@This() {
             if (world.updated) {
                 world.allocator.free(cache.entities);
                 cache = try world.query(searched);
-                world.updated = false;
             }
             return cache;
         }
     };
 }
 
+/// Stores an entities ID, and all data from its queried components
 pub fn Record(comptime searched: []const type, Entity: type) type {
     var fields_tuple: [searched.len + 1]NameToType = undefined;
     fields_tuple[0] = .{
@@ -132,6 +150,7 @@ pub fn Record(comptime searched: []const type, Entity: type) type {
     return meta.BuildStruct(fields_tuple);
 }
 
+/// Holds data of the provided type of all entities in a Sparse-Dense set pair
 pub fn Component(comptime T: type, Entity: type) type {
     return struct {
         pub const Type = T;
@@ -145,6 +164,7 @@ pub fn Component(comptime T: type, Entity: type) type {
             };
         }
 
+        /// Adds a single data entry to the dense set, and stores it's index at the index of the enrtities ID in the sparse set
         pub fn add_entity(this: *@This(), entity: Entity, value: T, allocator: std.mem.Allocator) !void {
             const old_length = this.dense.len;
             this.dense = try allocator.realloc(this.dense, old_length + 1);
@@ -153,6 +173,7 @@ pub fn Component(comptime T: type, Entity: type) type {
             this.sparse[entity] = @truncate(old_length);
         }
 
+        /// Batch version of add_entity
         pub fn add_entity_batch(this: *@This(), entities: []Entity, values: []T, allocator: std.mem.Allocator) !void {
             const old_length = this.dense.len;
             this.dense = try allocator.realloc(this.dense, old_length + values.len);
@@ -247,6 +268,7 @@ test "Query" {
     for (5..505) |i| {
         for (0..4_000) |_| {
             var query_cached = try PositionVelocityQuery.execute(&world);
+            world.updated = false;
 
             A.system(&query_cached);
         }
