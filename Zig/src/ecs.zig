@@ -20,7 +20,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
     const ComponentMask = std.meta.Int(.unsigned, types.len);
 
     return struct {
-        const WorldError = error{
+        const Error = error{
             EntityAlreadyExists,
         };
 
@@ -31,6 +31,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
 
         entities: [std.math.maxInt(Entity)]ComponentMask,
         components: ComponentStore,
+        updated: bool = false,
 
         pub fn init(allocator: std.mem.Allocator) @This() {
             const component: ComponentStore = undefined;
@@ -48,7 +49,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
         }
 
         pub fn add_entity(this: *@This(), entity: Entity, components: anytype) !void {
-            if (this.entities[entity] != 0) return WorldError.EntityAlreadyExists;
+            if (this.entities[entity] != 0) return Error.EntityAlreadyExists;
             inline for (components) |component| {
                 // Add entity to the component set
                 var field = &@field(this.components, meta.typeNameToFieldName(@TypeOf(component)));
@@ -58,6 +59,8 @@ pub fn World(comptime types: []const type, Entity: type) type {
                 const shift_amount = meta.indexOfTypeInArray(@TypeOf(component), types);
                 this.entities[entity] = this.entities[entity] | (@as(ComponentMask, 1) <<| shift_amount);
             }
+
+            this.updated = true;
         }
 
         pub fn entity_has(this: *@This(), entity: Entity, components: []const type) bool {
@@ -71,7 +74,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
             return (this.entities[entity] & components_to_check) == components_to_check;
         }
 
-        pub fn query(this: *@This(), comptime searched: []const type) !Query(searched, @This()) {
+        fn query(this: *@This(), comptime searched: []const type) !Query(searched, @This()) {
             var records = try this.allocator.alloc(Record(searched, Entity), this.max_length);
             var length: usize = 0;
             for (this.entities, 0..) |_, i| {
@@ -98,9 +101,19 @@ pub fn World(comptime types: []const type, Entity: type) type {
     };
 }
 
-pub fn Query(comptime searched: []const type, world: type) type {
+pub fn Query(comptime searched: []const type, ChosenWorld: type) type {
     return struct {
-        entities: []Record(searched, world.MaxLengthType),
+        pub var cache: @This() = undefined;
+        entities: []Record(searched, ChosenWorld.MaxLengthType),
+
+        pub fn execute(world: *ChosenWorld) !@This() {
+            if (world.updated) {
+                world.allocator.free(cache.entities);
+                cache = try world.query(searched);
+                world.updated = false;
+            }
+            return cache;
+        }
     };
 }
 
@@ -206,12 +219,12 @@ test "Query" {
         Hitbox,
     };
 
-    const TestWorld = World(types, u4);
+    const TestWorld = World(types, u16);
 
     const A = struct {
-        pub fn system(query: *Query(&[_]type{Position}, TestWorld)) void {
-            for (0..query.entities.len) |i| {
-                query.entities[i].Position.data = @Vector(2, f32){ 200, 200 };
+        pub fn system(query: *Query(&[_]type{ Position, Velocity }, TestWorld)) void {
+            for (query.entities) |entity| {
+                entity.Position.data = entity.Position.data + entity.Velocity.data;
             }
         }
     };
@@ -227,10 +240,22 @@ test "Query" {
         });
     }
 
-    var query = try world.query(&[_]type{Position});
-    std.debug.print("{any}\n\n", .{query.entities});
+    std.debug.print("{any}\n\n", .{world.components.Position.dense});
 
-    A.system(&query);
+    const PositionVelocityQuery = Query(&[_]type{ Position, Velocity }, TestWorld);
 
-    std.debug.print("{}\n", .{world.components.Position});
+    for (5..505) |i| {
+        for (0..4_000) |_| {
+            var query_cached = try PositionVelocityQuery.execute(&world);
+
+            A.system(&query_cached);
+        }
+
+        try world.add_entity(@truncate(i), .{
+            Position{ .data = @Vector(2, f32){ 0, 4 } },
+            Velocity{ .data = @Vector(2, f32){ 1, 0 } },
+        });
+    }
+
+    std.debug.print("{any}\n", .{world.components.Position.dense});
 }
