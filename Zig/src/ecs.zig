@@ -121,12 +121,13 @@ pub fn World(comptime types: []const type, Entity: type) type {
 pub fn Query(comptime searched: []const type, ChosenWorld: type) type {
     return struct {
         pub var cache: @This() = undefined;
+        var first: bool = true;
         entities: []Record(searched, ChosenWorld.EntityType),
 
         /// Executes the query, caching the result.
         pub fn execute(world: *ChosenWorld) !@This() {
-            if (world.updated) {
-                world.allocator.free(cache.entities);
+            if (world.updated or first) {
+                if (!first) world.allocator.free(cache.entities) else first = false;
                 cache = try world.query(searched);
             }
             return cache;
