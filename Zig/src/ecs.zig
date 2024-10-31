@@ -36,7 +36,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
 
         /// Stores information on which components the entity has, as a bit mask
         /// The entities ID is its index in this array
-        entities: [std.math.maxInt(Entity)]ComponentMask,
+        entities: []ComponentMask,
 
         /// Stores all generated components
         components: ComponentStore,
@@ -45,7 +45,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
         updated: bool = false,
 
         /// Initializes the object
-        pub fn init(allocator: std.mem.Allocator) @This() {
+        pub fn init(allocator: std.mem.Allocator) !@This() {
             const component: ComponentStore = undefined;
 
             inline for (std.meta.fields(ComponentStore)) |field| {
@@ -53,9 +53,12 @@ pub fn World(comptime types: []const type, Entity: type) type {
                 value = field.type.init();
             }
 
+            const entities = try allocator.alloc(ComponentMask, std.math.maxInt(Entity));
+            @memset(entities, @as(ComponentMask, 0));
+
             return @This(){
                 .allocator = allocator,
-                .entities = [_]ComponentMask{0} ** std.math.maxInt(Entity),
+                .entities = entities,
                 .components = component,
             };
         }
