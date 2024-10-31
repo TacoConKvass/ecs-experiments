@@ -21,8 +21,8 @@ const World = ecs.World(components, u16);
 const RenderQuery = ecs.Query(&[_]type{ Position, Renderable }, World);
 const MovementQuery = ecs.Query(&[_]type{ Position, Velocity }, World);
 
-const screenWidth = 800;
-const screenHeight = 450;
+const screenWidth = 1280;
+const screenHeight = 720;
 
 pub fn main() anyerror!void {
     // Screen parameters
@@ -34,7 +34,7 @@ pub fn main() anyerror!void {
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    var world = World.init(allocator);
+    var world = try World.init(allocator);
 
     var prng = std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -55,22 +55,15 @@ pub fn main() anyerror!void {
     }
 
     var movement_query: MovementQuery = undefined;
-    var started = false;
 
     var timer = try std.time.Timer.start();
     var buf: [30]u8 = undefined;
 
     while (!rl.windowShouldClose()) {
-        if (rl.isKeyDown(rl.KeyboardKey.key_enter)) {
-            started = !started;
-        }
-
         timer.reset();
         // Update
-        if (started) {
-            movement_query = try MovementQuery.execute(&world);
-            handle_movement(&movement_query, rand);
-        }
+        movement_query = try MovementQuery.execute(&world);
+        handle_movement(&movement_query, rand);
 
         const value = timer.lap();
         // Render
