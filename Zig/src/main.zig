@@ -7,14 +7,10 @@ const Color = rl.Color;
 
 const Position = struct { data: Vec2 };
 const Velocity = struct { data: Vec2 };
-const DisplayText = struct {
-    text: [:0]const u8,
-    color: Color,
-};
 const Renderable = struct { color: Color };
 
 const colors = &[_]Color{ Color.red, Color.light_gray, Color.purple };
-const components = &[_]type{ Position, DisplayText, Velocity, Renderable };
+const components = &[_]type{ Position, Velocity, Renderable };
 
 const World = ecs.World(components, u16);
 
@@ -43,12 +39,23 @@ pub fn main() anyerror!void {
     });
     const rand = prng.random();
 
-    for (0..60_000) |i| {
-        try world.add_entity(@truncate(i), .{
+    // for (0..5_000) |i| {
+    //     _ = try world.add_entity(.{
+    //         Position{ .data = .{ screenWidth / 2, screenHeight / 2 } },
+    //         Velocity{ .data = .{
+    //             if (rand.boolean()) rand.floatNorm(f32) else -rand.floatNorm(f32),
+    //             if (rand.boolean()) rand.floatNorm(f32) else -rand.floatNorm(f32),
+    //         } },
+    //         Renderable{ .color = colors[i % 3] },
+    //     });
+    // }
+
+    for (0..5) |i| {
+        _ = try world.add_entity_batch(1_000, .{
             Position{ .data = .{ screenWidth / 2, screenHeight / 2 } },
             Velocity{ .data = .{
-                if (rand.boolean()) rand.floatNorm(f32) else -rand.floatNorm(f32),
-                if (rand.boolean()) rand.floatNorm(f32) else -rand.floatNorm(f32),
+                if (rand.boolean()) rand.floatNorm(f32) * 10 else -rand.floatNorm(f32) * 10,
+                if (rand.boolean()) rand.floatNorm(f32) * 10 else -rand.floatNorm(f32) * 10,
             } },
             Renderable{ .color = colors[i % 3] },
         });
@@ -82,7 +89,7 @@ pub fn main() anyerror!void {
 }
 
 pub fn render_text(query: RenderQuery) void {
-    for (query.entities) |entity| rl.drawRectangle(@intFromFloat(entity.Position.data[0] - 1), @intFromFloat(entity.Position.data[1] - 1), 2, 2, entity.Renderable.color);
+    for (query.entities) |entity| rl.drawRectangle(@intFromFloat(entity.Position.data[0] - 2), @intFromFloat(entity.Position.data[1] - 2), 4, 4, entity.Renderable.color);
 }
 
 pub fn handle_movement(query: *MovementQuery, rand: std.Random) void {

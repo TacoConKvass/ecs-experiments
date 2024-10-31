@@ -24,12 +24,12 @@ pub fn World(comptime types: []const type, Entity: type) type {
     return struct {
         /// Possible to receive when calling add_entity
         const Error = error{
-            EntityAlreadyExists,
             OutOfEntitySlots,
         };
 
         const EntityType: type = Entity;
         const max_length: Entity = std.math.maxInt(Entity);
+        var first_free: usize = 0;
 
         /// Allocator used for all entity related allocations
         allocator: std.mem.Allocator,
@@ -64,8 +64,19 @@ pub fn World(comptime types: []const type, Entity: type) type {
         }
 
         /// Adds the specified components to the entity with the specified ID
-        pub fn add_entity(this: *@This(), entity: Entity, components: anytype) !void {
-            if (this.entities[entity] != 0) return Error.EntityAlreadyExists;
+        pub fn add_entity(this: *@This(), components: anytype) !Entity {
+            var found = false;
+            var entity: Entity = undefined;
+            for (first_free..this.entities.len) |index| {
+                if (this.entities[index] == 0) {
+                    entity = @truncate(index);
+                    found = true;
+                    first_free = index;
+                    break;
+                }
+            }
+            if (!found) return Error.OutOfEntitySlots;
+
             inline for (components) |component| {
                 // Add entity to the component set
                 var field = &@field(this.components, meta.typeNameToFieldName(@TypeOf(component)));
@@ -77,6 +88,36 @@ pub fn World(comptime types: []const type, Entity: type) type {
             }
 
             this.updated = true;
+            return entity;
+        }
+
+        pub fn add_entity_batch(this: *@This(), comptime amount: Entity, components: anytype) ![]Entity {
+            var index: usize = 0;
+            var entities: [amount]Entity = undefined;
+            for (first_free..this.entities.len) |entity| {
+                if (this.entities[entity] == 0) {
+                    entities[index] = @truncate(entity);
+                    first_free = index;
+                    index += 1;
+                    if (index == amount) break;
+                }
+            }
+
+            inline for (components) |component| {
+                // Add entity to the component set
+                var field = &@field(this.components, meta.typeNameToFieldName(@TypeOf(component)));
+                var data = [_]@TypeOf(component){component} ** amount;
+                try field.add_entity_batch(&entities, &data, this.allocator);
+
+                // Add to bit mask of the entity
+                for (entities) |entity| {
+                    const shift_amount = meta.indexOfTypeInArray(@TypeOf(component), types);
+                    this.entities[entity] = this.entities[entity] | (@as(ComponentMask, 1) <<| shift_amount);
+                }
+            }
+
+            this.updated = true;
+            return &entities;
         }
 
         /// Checks if the specified entity has the queried components
@@ -160,11 +201,13 @@ pub fn Component(comptime T: type, Entity: type) type {
         pub const Type = T;
         sparse: [std.math.maxInt(Entity)]?Entity,
         dense: []T,
+        sparse_index: []Entity,
 
         pub fn init() @This() {
             return @This(){
                 .sparse = [_]?Entity{null} ** std.math.maxInt(Entity),
                 .dense = &[_]T{},
+                .sparse_index = &[_]Entity{},
             };
         }
 
@@ -172,19 +215,25 @@ pub fn Component(comptime T: type, Entity: type) type {
         pub fn add_entity(this: *@This(), entity: Entity, value: T, allocator: std.mem.Allocator) !void {
             const old_length = this.dense.len;
             this.dense = try allocator.realloc(this.dense, old_length + 1);
+            this.sparse_index = try allocator.realloc(this.sparse_index, old_length + 1);
             this.dense[old_length] = value;
+            this.sparse_index[old_length] = entity;
 
             this.sparse[entity] = @truncate(old_length);
         }
 
         /// Batch version of add_entity
         pub fn add_entity_batch(this: *@This(), entities: []Entity, values: []T, allocator: std.mem.Allocator) !void {
+            assert(entities.len == values.len);
+
             const old_length = this.dense.len;
             this.dense = try allocator.realloc(this.dense, old_length + values.len);
+            this.sparse_index = try allocator.realloc(this.sparse_index, old_length + values.len);
             @memcpy(this.dense[old_length..], values);
+            @memcpy(this.sparse_index[old_length..], entities);
 
             for (entities, 0..) |entity, index| {
-                this.sparse[entity] = old_length + index;
+                this.sparse[entity] = @truncate(old_length + index);
             }
         }
     };
@@ -258,8 +307,8 @@ test "Query" {
     const allocator = gpa.allocator();
     var world = TestWorld.init(allocator);
 
-    for (0..4) |i| {
-        try world.add_entity(@truncate(i), .{
+    for (0..4) |_| {
+        _ = try world.add_entity(.{
             Position{ .data = @Vector(2, f32){ 0, 4 } },
             Velocity{ .data = @Vector(2, f32){ 1, 0 } },
         });
