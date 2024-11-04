@@ -9,12 +9,13 @@ const NameToType = std.meta.Tuple(&.{
 
 /// Defines the place where all components and entities are held
 /// Provided types are transformed into components and are accessible via world.components.TypeName
-pub fn World(comptime types: []const type, Entity: type) type {
+/// Can hold up to 4_294_967_295 entities
+pub fn World(comptime types: []const type, comptime max_amount: u32) type {
     var fields: [types.len]NameToType = undefined;
     for (types, 0..) |T, index| {
         fields[index] = .{
             meta.typeNameToFieldName(T),
-            Component(T, Entity),
+            Component(T, max_amount),
         };
     }
 
@@ -27,8 +28,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
             OutOfEntitySlots,
         };
 
-        const EntityType: type = Entity;
-        const max_length: Entity = std.math.maxInt(Entity);
+        const max_length = max_amount;
         var first_free: usize = 0;
 
         /// Allocator used for all entity related allocations
@@ -46,14 +46,13 @@ pub fn World(comptime types: []const type, Entity: type) type {
 
         /// Initializes the object
         pub fn init(allocator: std.mem.Allocator) !@This() {
-            const component: ComponentStore = undefined;
+            var component: ComponentStore = undefined;
 
             inline for (std.meta.fields(ComponentStore)) |field| {
-                var value = @field(component, field.name);
-                value = field.type.init();
+                @field(component, field.name) = try field.type.init(allocator);
             }
 
-            const entities = try allocator.alloc(ComponentMask, std.math.maxInt(Entity));
+            const entities = try allocator.alloc(ComponentMask, max_length);
             @memset(entities, @as(ComponentMask, 0));
 
             return @This(){
@@ -64,9 +63,9 @@ pub fn World(comptime types: []const type, Entity: type) type {
         }
 
         /// Adds the specified components to the entity with the specified ID
-        pub fn add_entity(this: *@This(), components: anytype) !Entity {
+        pub fn add_entity(this: *@This(), components: anytype) !u32 {
             var found = false;
-            var entity: Entity = undefined;
+            var entity: u32 = undefined;
             for (first_free..this.entities.len) |index| {
                 if (this.entities[index] == 0) {
                     entity = @truncate(index);
@@ -80,7 +79,7 @@ pub fn World(comptime types: []const type, Entity: type) type {
             inline for (components) |component| {
                 // Add entity to the component set
                 var field = &@field(this.components, meta.typeNameToFieldName(@TypeOf(component)));
-                try field.add_entity(entity, component, this.allocator);
+                try field.add_entity(@truncate(entity), component, this.allocator);
 
                 // Add to bit mask of the entity
                 const shift_amount = meta.indexOfTypeInArray(@TypeOf(component), types);
@@ -91,37 +90,19 @@ pub fn World(comptime types: []const type, Entity: type) type {
             return entity;
         }
 
-        pub fn add_entity_batch(this: *@This(), comptime amount: Entity, components: anytype) ![]Entity {
-            var index: usize = 0;
-            var entities: [amount]Entity = undefined;
-            for (first_free..this.entities.len) |entity| {
-                if (this.entities[entity] == 0) {
-                    entities[index] = @truncate(entity);
-                    first_free = index;
-                    index += 1;
-                    if (index == amount) break;
-                }
+        pub fn delete_entity(this: *@This(), entity: u32) !void {
+            if (this.entities[entity] == 0) return;
+
+            inline for (std.meta.fields(ComponentStore)) |component| {
+                try @field(this.components, component.name).delete_entity(entity, this.allocator);
             }
 
-            inline for (components) |component| {
-                // Add entity to the component set
-                var field = &@field(this.components, meta.typeNameToFieldName(@TypeOf(component)));
-                var data = [_]@TypeOf(component){component} ** amount;
-                try field.add_entity_batch(&entities, &data, this.allocator);
-
-                // Add to bit mask of the entity
-                for (entities) |entity| {
-                    const shift_amount = meta.indexOfTypeInArray(@TypeOf(component), types);
-                    this.entities[entity] = this.entities[entity] | (@as(ComponentMask, 1) <<| shift_amount);
-                }
-            }
-
+            this.entities[entity] = 0;
             this.updated = true;
-            return &entities;
         }
 
         /// Checks if the specified entity has the queried components
-        pub fn entity_has(this: *@This(), entity: Entity, components: []const type) bool {
+        pub fn entity_has(this: *@This(), entity: u32, components: []const type) bool {
             const one: ComponentMask = 1;
             var components_to_check: ComponentMask = 0;
             inline for (components) |component| {
@@ -134,12 +115,12 @@ pub fn World(comptime types: []const type, Entity: type) type {
 
         /// Returns all entities that have the specified components as a Query.
         /// Might throw an error on allocation.
-        fn query(this: *@This(), comptime searched: []const type) !Query(searched, @This()) {
-            var records = try this.allocator.alloc(Record(searched, Entity), max_length);
+        pub fn query(this: *@This(), comptime searched: []const type) !Query(searched, @This()) {
+            var records = try this.allocator.alloc(Record(searched), max_length);
             var length: usize = 0;
             for (this.entities, 0..) |_, i| {
                 if (this.entity_has(@truncate(i), searched)) {
-                    var record: Record(searched, Entity) = undefined;
+                    var record: Record(searched) = undefined;
                     record.entity = @truncate(i);
 
                     inline for (searched) |T| {
@@ -166,7 +147,7 @@ pub fn Query(comptime searched: []const type, ChosenWorld: type) type {
     return struct {
         pub var cache: @This() = undefined;
         var first: bool = true;
-        entities: []Record(searched, ChosenWorld.EntityType),
+        entities: []Record(searched),
 
         /// Executes the query, caching the result.
         pub fn execute(world: *ChosenWorld) !@This() {
@@ -180,11 +161,11 @@ pub fn Query(comptime searched: []const type, ChosenWorld: type) type {
 }
 
 /// Stores an entities ID, and all data from its queried components
-pub fn Record(comptime searched: []const type, Entity: type) type {
+pub fn Record(comptime searched: []const type) type {
     var fields_tuple: [searched.len + 1]NameToType = undefined;
     fields_tuple[0] = .{
         "entity",
-        Entity,
+        u32,
     };
     for (searched, 0..) |T, index| {
         fields_tuple[index + 1] = .{
@@ -196,23 +177,25 @@ pub fn Record(comptime searched: []const type, Entity: type) type {
 }
 
 /// Holds data of the provided type of all entities in a Sparse-Dense set pair
-pub fn Component(comptime T: type, Entity: type) type {
+pub fn Component(comptime T: type, comptime length: u32) type {
     return struct {
-        pub const Type = T;
-        sparse: [std.math.maxInt(Entity)]?Entity,
+        const Type = T;
+        sparse: []?u32,
         dense: []T,
-        sparse_index: []Entity,
+        sparse_index: []u32,
 
-        pub fn init() @This() {
+        pub fn init(allocator: std.mem.Allocator) !@This() {
+            const sparse = try allocator.alloc(?u32, length);
+            @memset(sparse, null);
             return @This(){
-                .sparse = [_]?Entity{null} ** std.math.maxInt(Entity),
+                .sparse = sparse,
                 .dense = &[_]T{},
-                .sparse_index = &[_]Entity{},
+                .sparse_index = &[_]u32{},
             };
         }
 
         /// Adds a single data entry to the dense set, and stores it's index at the index of the enrtities ID in the sparse set
-        pub fn add_entity(this: *@This(), entity: Entity, value: T, allocator: std.mem.Allocator) !void {
+        pub fn add_entity(this: *@This(), entity: u32, value: T, allocator: std.mem.Allocator) !void {
             const old_length = this.dense.len;
             this.dense = try allocator.realloc(this.dense, old_length + 1);
             this.sparse_index = try allocator.realloc(this.sparse_index, old_length + 1);
@@ -222,19 +205,17 @@ pub fn Component(comptime T: type, Entity: type) type {
             this.sparse[entity] = @truncate(old_length);
         }
 
-        /// Batch version of add_entity
-        pub fn add_entity_batch(this: *@This(), entities: []Entity, values: []T, allocator: std.mem.Allocator) !void {
-            assert(entities.len == values.len);
-
+        /// Deletes the entity on the specified index
+        pub fn delete_entity(this: *@This(), entity: u32, allocator: std.mem.Allocator) !void {
+            if (this.sparse[entity] == null) return;
             const old_length = this.dense.len;
-            this.dense = try allocator.realloc(this.dense, old_length + values.len);
-            this.sparse_index = try allocator.realloc(this.sparse_index, old_length + values.len);
-            @memcpy(this.dense[old_length..], values);
-            @memcpy(this.sparse_index[old_length..], entities);
+            this.sparse[this.sparse_index[old_length - 1]] = this.sparse_index[this.sparse[entity].?];
+            this.sparse_index[this.sparse[entity].?] = this.sparse_index[old_length - 1];
+            this.dense[this.sparse[entity].?] = this.dense[old_length - 1];
+            this.sparse[entity] = null;
 
-            for (entities, 0..) |entity, index| {
-                this.sparse[entity] = @truncate(old_length + index);
-            }
+            this.dense = try allocator.realloc(this.dense, old_length - 1);
+            this.sparse_index = try allocator.realloc(this.sparse_index, old_length - 1);
         }
     };
 }
@@ -250,16 +231,16 @@ test "Entity has component check" {
         Position,
         Velocity,
         Hitbox,
-    }, u4);
+    }, 12);
 
     std.debug.print("Entity has components check:\n", .{});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    var world = TestWorld.init(allocator);
+    var world = try TestWorld.init(allocator);
 
-    for (0..4) |i| {
-        try world.add_entity(@truncate(i), .{
+    for (0..4) |_| {
+        _ = try world.add_entity(.{
             Position{ .data = @Vector(2, f32){ 0, 4 } },
             Velocity{ .data = @Vector(2, f32){ 1, 0 } },
         });
@@ -293,7 +274,7 @@ test "Query" {
         Hitbox,
     };
 
-    const TestWorld = World(types, u16);
+    const TestWorld = World(types, 12);
 
     const A = struct {
         pub fn system(query: *Query(&[_]type{ Position, Velocity }, TestWorld)) void {
@@ -305,7 +286,7 @@ test "Query" {
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    var world = TestWorld.init(allocator);
+    var world = try TestWorld.init(allocator);
 
     for (0..4) |_| {
         _ = try world.add_entity(.{
@@ -314,11 +295,9 @@ test "Query" {
         });
     }
 
-    std.debug.print("{any}\n\n", .{world.components.Position.dense});
-
     const PositionVelocityQuery = Query(&[_]type{ Position, Velocity }, TestWorld);
 
-    for (5..505) |i| {
+    for (5..10) |_| {
         for (0..4_000) |_| {
             var query_cached = try PositionVelocityQuery.execute(&world);
             world.updated = false;
@@ -326,11 +305,52 @@ test "Query" {
             A.system(&query_cached);
         }
 
-        try world.add_entity(@truncate(i), .{
+        _ = try world.add_entity(.{
             Position{ .data = @Vector(2, f32){ 0, 4 } },
             Velocity{ .data = @Vector(2, f32){ 1, 0 } },
         });
     }
 
+    std.debug.print("{d}\n", .{world.entities.len});
+    std.debug.print("\n", .{});
+}
+
+test "Entity deletion" {
+    const Position = struct { data: @Vector(2, f32) };
+    const Velocity = struct { data: @Vector(2, f32) };
+    const Hitbox = struct { data: @Vector(2, u16) };
+
+    const types = &[_]type{
+        Position,
+        Velocity,
+        Hitbox,
+    };
+
+    const TestWorld = World(types, 12);
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    var world = try TestWorld.init(allocator);
+
+    _ = try world.add_entity(.{
+        Position{ .data = @Vector(2, f32){ 1, 1 } },
+    });
+
+    _ = try world.add_entity(.{
+        Position{ .data = @Vector(2, f32){ 2, 2 } },
+    });
+
+    _ = try world.add_entity(.{
+        Position{ .data = @Vector(2, f32){ 3, 3 } },
+    });
+
     std.debug.print("{any}\n", .{world.components.Position.dense});
+    std.debug.print("{any}\n", .{world.components.Position.sparse});
+    std.debug.print("{any}\n", .{world.components.Position.sparse_index});
+    std.debug.print("\n", .{});
+    try world.delete_entity(1);
+    std.debug.print("{any}\n", .{world.components.Position.dense});
+    std.debug.print("{any}\n", .{world.components.Position.sparse});
+    std.debug.print("{any}\n", .{world.components.Position.sparse_index});
+    std.debug.print("\n", .{});
 }
