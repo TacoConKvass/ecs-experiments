@@ -1,21 +1,19 @@
 ﻿using Core.DataStructures;
+using Core.Utils;
 
 namespace Core.ECS;
 
 public class ECS {
     private static int componentCount = 0;
-	internal byte[] temp;
-	internal byte[][] entityFlags;
+	internal byte[,] entityFlags;
 	public ECS(int componentCount) {
 		var result = Math.DivRem(componentCount, 8);
 		int count = result.Quotient + (result.Remainder == 0 ? 0 : 1);
-		entityFlags = new byte[count][];
-		temp = new byte[count];
-		Array.Fill<byte>(temp, 0);
-		Array.Fill(entityFlags, temp);
+		entityFlags = new byte[128, count];
 	}
 
 	public static ECS InitialiseWorld() => new ECS(componentCount);
+
 	public static void RegisterComponent<T>() where T : struct {
 		if (Component<T>.ID > 0) return;
 		Component<T>.ID = componentCount++;
@@ -23,18 +21,14 @@ public class ECS {
 
 	public bool EntityHas<T>(int id) where T : struct {
 		var result = Math.DivRem(Component<T>.ID, 8);
-		return (entityFlags[id][result.Quotient] & 1 << result.Remainder) > 0;
-	}
-
-	internal void SetEntityFlag<T>(int id) where T : struct {
-		var result = Math.DivRem(Component<T>.ID, 8);
-		entityFlags[id][result.Quotient] |= (byte)(1 << result.Remainder);
+		return (entityFlags[id, result.Quotient] & 1 << result.Remainder) > 0;
 	}
 
 	public void AddToEntity<T>(int id, T data) where T : struct {
 		EnsureCapacity(id);
 		Component<T>.Add(id, data);
-		SetEntityFlag<T>(id);
+		var result = Math.DivRem(Component<T>.ID, 8);
+		entityFlags[id, result.Quotient] |= (byte)(1 << result.Remainder);
 	}
 
 	internal void EnsureCapacity(int id) {
@@ -44,8 +38,7 @@ public class ECS {
 		int oldLength = entityFlags.Length;
 		while (newSize <= id) newSize *= 2;
 
-		Array.Resize(ref entityFlags, newSize);
-		Array.Fill(entityFlags, temp, oldLength, newSize - oldLength);
+		entityFlags = ArrayUtils.Resize2DArray(entityFlags, newSize, entityFlags.GetLength(1));
 	}
 }
 
