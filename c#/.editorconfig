@@ -242,3 +242,6 @@ dotnet_style_qualification_for_field = false:silent
 dotnet_style_qualification_for_property = false:silent
 dotnet_style_qualification_for_method = false:silent
 dotnet_style_qualification_for_event = false:silent
+indent_size = 4
+tab_width = 4
+indent_style = tab
