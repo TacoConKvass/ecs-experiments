@@ -4,10 +4,13 @@ ECS.RegisterComponent<Position>();
 ECS.RegisterComponent<Velocity>();
 ECS world = ECS.InitialiseWorld();
 
-world.AddToEntity(0, new Position(1, 1));
-world.AddToEntity(1, new Velocity(1, 1));
+world.GetEntity(1)
+	.Set<Position>(new(1, 0))
+	.Set<Velocity>(new(1, 0));
 
-Console.WriteLine(world.EntityHas<Position>(0));
+world.QueryByMask([1]);
+
+Console.WriteLine(world.entityFlags[1, 0]);
 
 public struct Position(int x, int y) {
 	public int X = x;
