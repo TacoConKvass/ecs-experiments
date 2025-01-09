@@ -1,13 +1,16 @@
 ﻿namespace Core.ECS;
 
-public struct Entity {
-	internal static int ID = 0;
-	internal static ECS World;
+public struct Entity(int id, byte worldID) {
+
+	public int ID = id;
+	internal byte WorldID = worldID;
+
 	public bool Has<T>() where T : struct {
-		return World.EntityHas<T>(ID);
+		return ECS.Worlds[WorldID].EntityHas<T>(ID);
 	}
+
 	public Entity Set<T>(T data) where T : struct {
-		World.Set(ID, data);
+		ECS.Worlds[WorldID].Set(ID, data);
 		return this;
 	}
 }

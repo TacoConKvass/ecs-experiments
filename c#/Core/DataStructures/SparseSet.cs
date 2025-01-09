@@ -1,6 +1,8 @@
-﻿namespace Core.DataStructures;
+﻿using System.Runtime.CompilerServices;
 
-public class SparseSet<T> {
+namespace Core.DataStructures;
+
+public struct SparseSet<T> {
 	public int Count { get; private set; }
 
 	public int[] Sparse;
@@ -45,7 +47,7 @@ public class SparseSet<T> {
         Sparse[Dense[id]] = -1;
 
         Data[index] = Data[Count];
-		Data[Count] = default;
+		if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) Data[Count] = default;
 
 		Dense[index] = Sparse[Dense[Count]];
 		Dense[Count] = -1;
@@ -58,9 +60,8 @@ public class SparseSet<T> {
 	private void EnsureSparseCapacity(int id) {
 		if (id < Sparse.Length) return;
 		
-		int newSize = Sparse.Length;
+		int newSize = Math.Max(id, Sparse.Length * 2);
 		int oldLength = Sparse.Length;
-		while (newSize <= id) newSize *= 2;
 
 		Array.Resize(ref Sparse, newSize);
         Array.Fill(Sparse, -1, oldLength, newSize - oldLength);
@@ -75,7 +76,7 @@ public class SparseSet<T> {
 		Array.Fill(Dense, -1, Count, newSize - Count);
 
 		Array.Resize(ref Data, newSize);
-		Array.Fill(Data, default, Count, newSize - Count);
+		if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) Array.Fill(Data, default, Count, newSize - Count);
 	}
 
 	private void ShrinkIfApplicable() {
