@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace Core.DataStructures;
 
@@ -38,7 +39,8 @@ public struct SparseSet<T> {
         EnsureSparseCapacity(id);
         EnsureDataCapacity();
 
-        Data[id] = data;
+		if (Sparse[id] == 0) Add(id, data);
+        else Data[id] = data;
 	} 
 
 	public void Remove(int id) {

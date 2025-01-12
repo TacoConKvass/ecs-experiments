@@ -1,23 +1,16 @@
 ﻿using Core.DataStructures;
+using System;
 
 namespace Core.ECS;
 
 public static class Component<T> where T : struct {
-	public static List<int> ID = new List<int>();
-	
-	internal static List<SparseSet<T>> internalSet = new List<SparseSet<T>>();
-	
-	public static int[] Sparse(int worldID) => internalSet[worldID].Sparse;
-	
-	public static int[] Dense(int worldID) => internalSet[worldID].Dense;
-	
-	public static T[] Data(int worldID) => internalSet[worldID].Data;
+	internal static (SparseSet<T> DataStore, int Offset)[] Data = [];
 
-	public static void Add(int id, T data, int worldID) {
-		internalSet[worldID].Add(id, data);
-	}
+	internal static void AddToWorld(int worldID, int offset) {
+		if (Data.Length <= worldID) {
+			Array.Resize(ref Data, Math.Max(worldID + 1, Data.Length * 2));
+		}
 
-	public static void Set(int id, T data, int worldID) {
-		internalSet[worldID].Set(id, data);
+		Data[worldID] = new(new SparseSet<T>(128), offset);
 	}
 }

@@ -6,6 +6,8 @@
 	<ImplicitUsings>enable</ImplicitUsings>
 	<Nullable>enable</Nullable>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<ImplicitUsings>disable</ImplicitUsings>
+	<RootNamespace></RootNamespace>
   </PropertyGroup>
 	
 </Project>

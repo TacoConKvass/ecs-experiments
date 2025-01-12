@@ -1,59 +1,63 @@
 ﻿using Core.DataStructures;
-using System.Collections;
+using System;
 
 namespace Core.ECS;
 
-public class World(int componentCount, byte worldID) {
+public struct Entity(int id, BitSet flags) {
+	public int ID = id;
 
-	internal Entity[] entities = new Entity[128];
-	
-	internal BitSet[] entityFlags = BitSet.DefaultArray(componentCount, 128);
+	public BitSet Flags = flags;
 
-	public byte WorldID = worldID;
+	public bool Has<T>() where T : struct => Flags.Has(Component<T>.Data[ECS.ActiveWorld.ID].Offset);
 
-	public int ComponentCount = componentCount;
+	public Entity Set<T>(T data) where T : struct {
+		var component = Component<T>.Data[ECS.ActiveWorld.ID];
+		Flags.Set(component.Offset, true);
+		component.DataStore.Set(ID, data);
+		return this;
+	}
+}
+
+public class World(int worldID) {
+	public int ID = worldID;
+
+	public BitSet[] Entities = [];
+
+	int componentCount = 0;
+
+	public World RegisterComponent<T>() where T : struct {
+		Component<T>.AddToWorld(ID, componentCount++);
+		return this;
+	}
 
 	public SparseSet<T> GetComponent<T>() where T : struct {
-		return Component<T>.internalSet[WorldID];
+		return Component<T>.Data[ID].DataStore;
 	}
 
-	public ref Entity GetEntity(int id) {
-		EnsureCapacity(id);
-		ref Entity result = ref entities[id];
-		result.WorldID = WorldID;
-		result.ID = id;
-		return ref result;
-	}
-
-	public bool EntityHas<T>(int id) where T : struct {
-		EnsureCapacity(id);
-		return entityFlags[id].Has(Component<T>.ID[WorldID]);
-	}
-
-	public void Set<T>(int id, T data) where T : struct {
-		EnsureCapacity(id);
-		if (!EntityHas<T>(id)) Component<T>.Add(id, data, WorldID);
-		else Component<T>.Set(id, data, WorldID);
-		entityFlags[id].Set(Component<T>.ID[WorldID], true);
-	}
-
-	internal void EnsureCapacity(int id) {
-		if (id < entityFlags.Length) return;
-
-		int newSize = Math.Max(id, entityFlags.Length * 2);
-		int oldSize = entityFlags.Length;
-		Array.Resize(ref entities, newSize);
-		Array.Resize(ref entityFlags, newSize);
-		Array.Copy(BitSet.DefaultArray(ComponentCount, newSize - oldSize), 0, entityFlags, oldSize, newSize - oldSize);
-	}
-
-	internal bool QueryByMask(byte[] mask) {
-		ReadOnlySpan<byte> maskSpan = mask;
-
-		for (int i = 0; i < entityFlags.Length; i++) {
-
+	public World Initialise() {
+		Entities = new BitSet[128];
+		for (int i = 0; i < 128; i++) {
+			Entities[i] = new BitSet(componentCount);
 		}
+		ECS.SetActiveWorld(this);
+		return this;
+	}
 
-		return true;
+	public Entity GetEntity(int id) {
+		EnsureCapacity(id);
+		return new Entity(id, Entities[id]);
+	}
+
+	internal void EnsureCapacity(int length) {
+		if (Entities.Length > length) return;
+
+		int oldLength = Entities.Length;
+		int newSize = Math.Max(length, Entities.Length * 2);
+
+		Array.Resize(ref Entities, newSize);
+
+		for (int i = oldLength; i < newSize; i++) {
+			Entities[i] = new BitSet(componentCount);
+		}
 	}
 }
