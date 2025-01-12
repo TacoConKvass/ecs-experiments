@@ -9,5 +9,9 @@
 	<ImplicitUsings>disable</ImplicitUsings>
 	<RootNamespace></RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Raylib-cs" Version="7.0.0" />
+  </ItemGroup>
 	
 </Project>

@@ -39,9 +39,15 @@ public struct SparseSet<T> {
         EnsureSparseCapacity(id);
         EnsureDataCapacity();
 
-		if (Sparse[id] == 0) Add(id, data);
+		if (Sparse[id] == -1) Add(id, data);
         else Data[id] = data;
 	} 
+
+	public ref T Get(int id) {
+		EnsureSparseCapacity(id);
+		EnsureDataCapacity();
+		return ref Data[Sparse[id]];
+	}
 
 	public void Remove(int id) {
 		int index = Sparse[id];
@@ -72,7 +78,7 @@ public struct SparseSet<T> {
 	private void EnsureDataCapacity() {
 		if (Count + 1 < Data.Length) return;
 
-		int newSize = Dense.Length * 2;
+		int newSize = Math.Max(Count, Dense.Length * 2); ;
 
 		Array.Resize(ref Dense, newSize);
 		Array.Fill(Dense, -1, Count, newSize - Count);
