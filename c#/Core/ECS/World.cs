@@ -30,8 +30,8 @@ public class World(int worldID) {
 		return this;
 	}
 
-	public SparseSet<T> GetComponent<T>() where T : struct {
-		return Component<T>.Data[ID].DataStore;
+	public ref (SparseSet<T> DataStore, int Offset) GetComponent<T>() where T : struct {
+		return ref Component<T>.Data[ID];
 	}
 
 	public World Initialise() {
