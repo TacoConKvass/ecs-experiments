@@ -8,7 +8,7 @@ World world = ECS.CreateWorld()
 	.RegisterComponent<Velocity>()
 	.Initialise();
 
-for (int i = 0; i < 50_000; i++) {
+for (int i = 0; i < 200; i++) {
 	world.GetEntity(i)
 		.Set<Velocity>(new Velocity(Random.Shared.Next(-80, 80), Random.Shared.Next(-80, 80)).Normalise())
 		.Set<Position>(new(500, 400));
@@ -21,7 +21,7 @@ while (!Raylib.WindowShouldClose()) {
 	var pos = world.GetComponent<Position>();
 	var vel = world.GetComponent<Velocity>();
 	if (Raylib.IsKeyDown(KeyboardKey.Space)) {
-		for (int i = 0; i < 50_000; i++) {
+		for (int i = 0; i < 200; i++) {
 			ref var p = ref pos.Data[i];
 			p.Data += vel.Data[i].Data * 0.1f;
 		}
@@ -29,8 +29,8 @@ while (!Raylib.WindowShouldClose()) {
 	
 	Raylib.BeginDrawing();
 	Raylib.ClearBackground(Color.Black);
-	foreach (var test in new Query<Position, Velocity>(world).Execute().MoveNext())
-		Raylib.DrawCircle((int)pos.Data[i].Data.X, (int)pos.Data[i].Data.Y, 2, Color.Beige);
+	foreach (var test in Query<Position, Velocity>.Execute(world))
+		Raylib.DrawCircle((int)test.Component1.Data.X, (int)test.Component1.Data.Y, 2, Color.Beige);
 	Raylib.DrawFPS(20, 20);
 
 	Raylib.EndDrawing();

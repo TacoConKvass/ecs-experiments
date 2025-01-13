@@ -24,28 +24,30 @@ public struct SparseSet<T> {
 
 	public bool Add(int id, T data) {
 		EnsureSparseCapacity(id);
-		EnsureDataCapacity();
+		EnsureDataCapacity(Count);
         if (Sparse[id] > 0) return false;
 
+		Console.WriteLine(Count);
         Sparse[id] = Count;
 		Dense[Count] = id;
 		Data[Count] = data;
         Count++;
+		Console.WriteLine(Count);
 
 		return true;
     }
 
 	public void Set(int id, T data) {
         EnsureSparseCapacity(id);
-        EnsureDataCapacity();
+		EnsureDataCapacity(Sparse[id]);
 
 		if (Sparse[id] == -1) Add(id, data);
-        else Data[id] = data;
+		else Data[id] = data;
 	} 
 
 	public ref T Get(int id) {
 		EnsureSparseCapacity(id);
-		EnsureDataCapacity();
+		EnsureDataCapacity(Sparse[id]);
 		return ref Data[Sparse[id]];
 	}
 
@@ -67,18 +69,20 @@ public struct SparseSet<T> {
 
 	private void EnsureSparseCapacity(int id) {
 		if (id < Sparse.Length) return;
-		
-		int newSize = Math.Max(id, Sparse.Length * 2);
+
+		Console.WriteLine("Resizin' sparse");
+		int newSize = Math.Max(id + 1, Sparse.Length * 2);
 		int oldLength = Sparse.Length;
 
 		Array.Resize(ref Sparse, newSize);
         Array.Fill(Sparse, -1, oldLength, newSize - oldLength);
     }
 
-	private void EnsureDataCapacity() {
-		if (Count + 1 < Data.Length) return;
+	private void EnsureDataCapacity(int id) {
+		if (id + 1 < Data.Length) return;
 
-		int newSize = Math.Max(Count, Dense.Length * 2); ;
+		Console.WriteLine("Resizin' data");
+		int newSize = Math.Max(id + 1, Dense.Length * 2); ;
 
 		Array.Resize(ref Dense, newSize);
 		Array.Fill(Dense, -1, Count, newSize - Count);
