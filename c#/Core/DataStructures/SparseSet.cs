@@ -1,102 +1,69 @@
-﻿using System;
+﻿using Core.Utils;
+using System;
 using System.Runtime.CompilerServices;
 
 namespace Core.DataStructures;
 
-public struct SparseSet<T> {
-	public int Count { get; private set; }
+public sealed class SparseSet<T>(int initialCapacity) {
+	public int Count { get; set; } = 0;
 
-	public int[] Sparse;
+	public int[] Sparse = Arrays.Create(-1, initialCapacity);
 
-	public int[] Dense;
+	public int[] Dense = Arrays.Create(-1, initialCapacity);
 
-	public T[] Data;
+	public T[] Data = Arrays.Create<T>(default(T), initialCapacity);
 
-	public SparseSet(int initialCapacity) {
-		Sparse = new int[initialCapacity];
-		Dense = new int[initialCapacity];
-		Data = new T[initialCapacity];
-
-		Array.Fill(Sparse, -1);
-		Array.Fill(Dense, -1);
-		Array.Fill(Data, default);
-	}
-
-	public bool Add(int id, T data) {
-		EnsureSparseCapacity(id);
+	public void Add(int id, T data) {
+		EnsureSparseCapacity(id + 1);
 		EnsureDataCapacity(Count);
-        if (Sparse[id] > 0) return false;
 
-		Console.WriteLine(Count);
-        Sparse[id] = Count;
-		Dense[Count] = id;
+		Sparse[id] = Count;
+		Dense[Count] = id;	
 		Data[Count] = data;
-        Count++;
-		Console.WriteLine(Count);
 
-		return true;
-    }
+		Count++;
+	}
 
 	public void Set(int id, T data) {
-        EnsureSparseCapacity(id);
-		EnsureDataCapacity(Sparse[id]);
+		EnsureSparseCapacity(id + 1);
+		EnsureDataCapacity(Sparse[id] + 1);
 
 		if (Sparse[id] == -1) Add(id, data);
-		else Data[id] = data;
-	} 
-
+		else Data[Sparse[id]] = data;
+	}
+	
+	public void Remove(int id) {
+		EnsureSparseCapacity(id + 1);
+		EnsureDataCapacity(Sparse[id] + 1);
+	}
+	
 	public ref T Get(int id) {
-		EnsureSparseCapacity(id);
-		EnsureDataCapacity(Sparse[id]);
+		EnsureSparseCapacity(id + 1);
+		EnsureDataCapacity(Sparse[id] + 1);
+
 		return ref Data[Sparse[id]];
 	}
+	
+	public void EnsureSparseCapacity(int size) {
+		if (size < Sparse.Length) return;
 
-	public void Remove(int id) {
-		int index = Sparse[id];
-
-        Sparse[Dense[id]] = -1;
-
-        Data[index] = Data[Count];
-		if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) Data[Count] = default;
-
-		Dense[index] = Sparse[Dense[Count]];
-		Dense[Count] = -1;
-
-		Count--;
-
-		ShrinkIfApplicable();
-	}
-
-	private void EnsureSparseCapacity(int id) {
-		if (id < Sparse.Length) return;
-
-		Console.WriteLine("Resizin' sparse");
-		int newSize = Math.Max(id + 1, Sparse.Length * 2);
+		int newLength = Sparse.Length * 2;
 		int oldLength = Sparse.Length;
 
-		Array.Resize(ref Sparse, newSize);
-        Array.Fill(Sparse, -1, oldLength, newSize - oldLength);
-    }
-
-	private void EnsureDataCapacity(int id) {
-		if (id + 1 < Data.Length) return;
-
-		Console.WriteLine("Resizin' data");
-		int newSize = Math.Max(id + 1, Dense.Length * 2); ;
-
-		Array.Resize(ref Dense, newSize);
-		Array.Fill(Dense, -1, Count, newSize - Count);
-
-		Array.Resize(ref Data, newSize);
-		if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) Array.Fill(Data, default, Count, newSize - Count);
+		Array.Resize(ref Sparse, newLength);
+		Array.Fill(Sparse, -1, oldLength, newLength - oldLength);
 	}
+	
+	public void EnsureDataCapacity(int size) {
+		if (size < Data.Length) return;
 
-	private void ShrinkIfApplicable() {
-		if (Count >= Data.Length / 3) return;
+		int newLength = Data.Length * 2;
+		int oldLength = Data.Length;
 
-		int newSize = Data.Length / 2;
-		
-		Array.Resize(ref Dense, newSize);
-		Array.Resize(ref Data, newSize);
+		Array.Resize(ref Dense, newLength);
+		Array.Fill(Dense, -1, oldLength, newLength - oldLength);
+
+		Array.Resize(ref Data, newLength);
+		if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) Array.Fill(Data, default, oldLength, newLength - oldLength);
 	}
 }
