@@ -1,7 +1,6 @@
 ﻿using Core.ECS;
 using Raylib_cs;
 using System;
-using System.Linq;
 using System.Numerics;
 
 World world = ECS.CreateWorld()
@@ -17,9 +16,16 @@ for (int i = 0; i < 1_000_000; i++) {
 Raylib.InitWindow(1280, 720, "Wah");
 Raylib.SetExitKey(KeyboardKey.Null);
 
+ref var pos = ref world.GetComponent<Position>();
+var vel = world.GetComponent<Velocity>();
+
 while (!Raylib.WindowShouldClose()) {
-	var pos = world.GetComponent<Position>();
-	var vel = world.GetComponent<Velocity>();
+	Query<Position>.Execute(world);
+	for (int i = 0; i < Query<Position>.Count; i++) {
+		pos.DataStore.Data[i].Value += Vector2.UnitX;
+	}
+
+	pos.Dirty = true;
 
 	Raylib.BeginDrawing();
 	Raylib.ClearBackground(Color.Black);
@@ -28,6 +34,8 @@ while (!Raylib.WindowShouldClose()) {
 	Raylib.DrawFPS(20, 20);
 
 	Raylib.EndDrawing();
+
+	pos.Dirty = false;
 }
 
 public struct Position(float x, float y) {
