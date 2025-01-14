@@ -30,6 +30,13 @@ ref var posi = ref pos.DataStore.Data;
 var magic = Raylib.LoadTexture("Assets/Magic.png");
 float deltaTime = 0;
 
+while (!Raylib.IsKeyPressed(KeyboardKey.Space)) {
+	Raylib.BeginDrawing();
+	Raylib.ClearBackground(Color.Black); 
+	Raylib.DrawFPS(20, 20);
+	Raylib.EndDrawing();
+}
+
 while (!Raylib.WindowShouldClose()) {
 
 	Query<Position>.Execute(world);
