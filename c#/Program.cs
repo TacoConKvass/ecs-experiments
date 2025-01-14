@@ -12,14 +12,14 @@ World world = ECS.CreateWorld()
 for (int i = 0; i < 1_000_000; i++) {
 	world.GetEntity(i)
 		.Set<Position>(new (0, 0))
-		.Set<Velocity>(new (Random.Shared.NextSingle(), Random.Shared.NextSingle()))
+		.Set<Velocity>(new Velocity(Random.Shared.NextSingle(), Random.Shared.NextSingle()))
 		.Set<Color>(new (Random.Shared.Next(255), Random.Shared.Next(255), Random.Shared.Next(255)));
 }
 
 Raylib.InitWindow(1280, 720, "Wah");
 Raylib.SetExitKey(KeyboardKey.Null);
 
-// Raylib.SetTargetFPS(60);
+Raylib.SetTargetFPS(60);
 
 ref var pos = ref world.GetComponent<Position>();
 var vel = world.GetComponent<Velocity>();
@@ -48,14 +48,14 @@ while (!Raylib.WindowShouldClose()) {
 	Raylib.ClearBackground(Color.Black);
 	
 	foreach (var i in Query<Position, Color>.Execute(world)) {
-		Raylib.DrawTexture(magic, (int)posi[i].Value.X, (int)posi[i].Value.Y, ren[i]);
+		if (posi[i].Value.X < 1280 && posi[i].Value.Y < 720)
+			Raylib.DrawTexture(magic, (int)posi[i].Value.X, (int)posi[i].Value.Y, ren[i]);
 	}
 
 	Raylib.DrawFPS(20, 20);
 
 	Raylib.EndDrawing();
 	deltaTime = Raylib.GetFrameTime() / 0.0166667f;
-	Console.WriteLine(deltaTime);
 }
 
 public struct Position(float x, float y) {
