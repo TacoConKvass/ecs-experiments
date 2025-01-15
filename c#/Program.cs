@@ -41,7 +41,7 @@ while (!Raylib.IsKeyPressed(KeyboardKey.Space)) {
 }
 
 while (!Raylib.WindowShouldClose()) {
-	Query<Position>.Execute(world);
+	deltaTime = Raylib.GetFrameTime() * 60;
 	foreach (var i in Query<Position>.Execute(world)) {
 		pos.DataStore.Data[i].Value += vel.DataStore.Data[i].Value * deltaTime;
 	}
@@ -74,7 +74,6 @@ while (!Raylib.WindowShouldClose()) {
 	Raylib.DrawText(rendered.ToString(), 20, 700, 20, Color.Red);
 
 	Raylib.EndDrawing();
-	deltaTime = Raylib.GetFrameTime() / 0.0166667f;
 	pos.Dirty = false;
 }
 
