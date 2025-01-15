@@ -3,21 +3,6 @@ using System;
 
 namespace Core.ECS;
 
-public struct Entity(int id, BitSet flags) {
-	public int ID = id;
-
-	public BitSet Flags = flags;
-
-	public bool Has<T>() where T : struct => Flags.Has(Component<T>.Data[ECS.ActiveWorld.ID].Offset);
-
-	public Entity Set<T>(T data) where T : struct {
-		var component = Component<T>.Data[ECS.ActiveWorld.ID];
-		Flags.Set(component.Offset, true);
-		component.DataStore.Set(ID, data);
-		return this;
-	}
-}
-
 public class World(int worldID) {
 	public int ID = worldID;
 
@@ -59,5 +44,20 @@ public class World(int worldID) {
 		for (int i = oldLength; i < newSize; i++) {
 			Entities[i] = new BitSet(componentCount);
 		}
+	}
+}
+
+public struct Entity(int id, BitSet flags) {
+	public int ID = id;
+
+	public BitSet Flags = flags;
+
+	public bool Has<T>() where T : struct => Flags.Has(Component<T>.Data[ECS.ActiveWorld.ID].Offset);
+
+	public Entity Set<T>(T data) where T : struct {
+		var component = Component<T>.Data[ECS.ActiveWorld.ID];
+		Flags.Set(component.Offset, true);
+		component.DataStore.Set(ID, data);
+		return this;
 	}
 }
