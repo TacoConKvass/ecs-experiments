@@ -1,100 +1,101 @@
-﻿using Core.ECS;
+﻿using Components;
+using Core.ECS;
 using Raylib_cs;
 using System;
 using System.Numerics;
 
-World world = ECS.CreateWorld()
-	.RegisterComponent<Position>()
-	.RegisterComponent<Velocity>()
-	.RegisterComponent<Color>()
-	.Initialise();
+public class Program {
+	static Vector2 ScreenSize = new Vector2(1280, 720);
+	static Camera2D camera = new Camera2D(ScreenSize/ 2, Vector2.Zero, 0, 1);
+	static Texture2D magic;
+	static float deltaTimeMultiplier;
+	static float CameraSpeed = .5f;
 
-for (int i = 0; i < 1_000_000; i++) {
-	world.GetEntity(i)
-		.Set<Position>(new (0, 0))
-		.Set<Velocity>(new(Random.Shared.NextSingle(), Random.Shared.NextSingle()))
-		.Set<Color>(new (Random.Shared.Next(255), Random.Shared.Next(255), Random.Shared.Next(255)));
-}
+	static float Randomised => Random.Shared.NextSingle() * 3;
 
-Vector2 ViewportPosition = Vector2.Zero;
-Vector2 ScreenSize = new Vector2(1280, 720);
+	public static void Main(string[] args) {
+		Raylib.InitWindow((int)ScreenSize.X, (int)ScreenSize.Y, "Wah");
+		Raylib.SetExitKey(KeyboardKey.Null);
 
-Raylib.InitWindow((int)ScreenSize.X, (int)ScreenSize.Y, "Wah");
-Raylib.SetExitKey(KeyboardKey.Null);
+		magic = Raylib.LoadTexture("Assets/Magic.png"); ;
 
-// Raylib.SetTargetFPS(60);
+		World world = ECS.CreateWorld()
+			.RegisterComponent<Position>()
+			.RegisterComponent<Velocity>()
+			.RegisterComponent<Renderable>()
+			.Initialise();
 
-ref var pos = ref world.GetComponent<Position>();
-var vel = world.GetComponent<Velocity>();
-var ren = world.GetComponent<Color>().DataStore.Data;
+		for (int i = 0; i < 50_000; i++) {
+			world.GetEntity(i)
+				.Set<Position>(new(0, 0))
+				.Set<Velocity>(new Velocity(5, 5).RotatedBy(
+					Random.Shared.Next(-4, 4) * Random.Shared.NextSingle()
+				))
+				.Set<Renderable>(new(magic, new(Random.Shared.Next(255), Random.Shared.Next(255), Random.Shared.Next(255))));
+		}
 
-ref var posi = ref pos.DataStore.Data;
+		Raylib.SetTargetFPS(60);
 
-var magic = Raylib.LoadTexture("Assets/Magic.png");
-float deltaTime = 0;
+		ComponentData<Position> position = world.GetComponent<Position>();
+		ComponentData<Velocity> velocity = world.GetComponent<Velocity>();
+		ComponentData<Renderable> renderable = world.GetComponent<Renderable>();
+		
+		while (!Raylib.IsKeyPressed(KeyboardKey.Space)) {
+			Raylib.BeginDrawing();
+			Raylib.ClearBackground(Color.Black);
+			Raylib.DrawFPS(20, 20);
+			Raylib.EndDrawing();
+		}
 
-while (!Raylib.IsKeyPressed(KeyboardKey.Space)) {
-	Raylib.BeginDrawing();
-	Raylib.ClearBackground(Color.Black); 
-	Raylib.DrawFPS(20, 20);
-	Raylib.EndDrawing();
-}
+		while (!Raylib.WindowShouldClose()) {
+			deltaTimeMultiplier = Raylib.GetFrameTime() * 60;
+			foreach (var i in Query<Position, Velocity>.Execute(world)) {
+				position.DataStore.Data[i].Value += velocity.DataStore.Data[i].Value * deltaTimeMultiplier;
+				var pos = position.DataStore.Data[i].Value;
+				var vel = velocity.DataStore.Data[i].Value;
+				if (pos.X < camera.Target.X - ScreenSize.X / 2 && vel.X < 0) velocity.DataStore.Data[i].Value *= -1;
+				if (pos.X > camera.Target.X + ScreenSize.X / 2 && vel.X > 0) velocity.DataStore.Data[i].Value *= -1;
+				if (pos.Y < camera.Target.Y - ScreenSize.Y / 2 && vel.Y < 0) velocity.DataStore.Data[i].Value *= -1;
+				if (pos.Y > camera.Target.Y + ScreenSize.Y / 2 && vel.Y > 0) velocity.DataStore.Data[i].Value *= -1;
+			}
 
-while (!Raylib.WindowShouldClose()) {
-	deltaTime = Raylib.GetFrameTime() * 60;
-	foreach (var i in Query<Position>.Execute(world)) {
-		pos.DataStore.Data[i].Value += vel.DataStore.Data[i].Value * deltaTime;
+			HandleMovement();
+			Render(camera, ECS.ActiveWorld, position.DataStore.Data, renderable.DataStore.Data);
+
+			position.Dirty = false;
+		}
+	}
+	static void Render(Camera2D camera, World world, Position[] position, Renderable[] renderable) {
+		Raylib.BeginDrawing();
+		Raylib.ClearBackground(Color.Black);
+
+		Raylib.BeginMode2D(camera);
+			foreach (var i in Query<Position, Renderable>.Execute(world)) {
+				if (!IsOnScreen(position[i].Value, camera)) continue;
+
+				Raylib.DrawTexture(
+					renderable[i].Texture, 
+					(int)(position[i].Value.X), (int)(position[i].Value.Y), 
+					renderable[i].Color
+				);
+			}
+		Raylib.EndMode2D();
+
+		Raylib.DrawFPS(20, 20);
+		Raylib.EndDrawing();
 	}
 
-	if (Raylib.IsKeyDown(KeyboardKey.A)) {
-		ViewportPosition.X++;
-	}
-	if (Raylib.IsKeyDown(KeyboardKey.D)) {
-		ViewportPosition.X--;
-	}
-	if (Raylib.IsKeyDown(KeyboardKey.S)) {
-		ViewportPosition.Y--;
-	}
-	if (Raylib.IsKeyDown(KeyboardKey.W)) {
-		ViewportPosition.Y++;
+	static void HandleMovement() {
+		if (Raylib.IsKeyDown(KeyboardKey.A)) camera.Target.X -= CameraSpeed * deltaTimeMultiplier;
+		if (Raylib.IsKeyDown(KeyboardKey.D)) camera.Target.X += CameraSpeed * deltaTimeMultiplier;
+		if (Raylib.IsKeyDown(KeyboardKey.S)) camera.Target.Y += CameraSpeed * deltaTimeMultiplier;
+		if (Raylib.IsKeyDown(KeyboardKey.W)) camera.Target.Y -= CameraSpeed * deltaTimeMultiplier;
+		if (Raylib.IsKeyDown(KeyboardKey.Z)) camera.Zoom = 2;
+		else camera.Zoom = 1;
 	}
 
-	Raylib.BeginDrawing();
-	Raylib.ClearBackground(Color.Black);
-	int rendered = 0;
-	
-	foreach (var i in Query<Position, Color>.Execute(world)) {
-		if (!IsOnScreen(posi[i].Value)) continue;
-
-		Raylib.DrawTexture(magic, (int)(posi[i].Value.X + ViewportPosition.X), (int)(posi[i].Value.Y + ViewportPosition.Y), ren[i]);
-		rendered++;
-	}
-
-	Raylib.DrawFPS(20, 20);
-	Raylib.DrawText(rendered.ToString(), 20, 700, 20, Color.Red);
-
-	Raylib.EndDrawing();
-	pos.Dirty = false;
-}
-
-bool IsOnScreen(Vector2 point) {
-	return point.X > -ViewportPosition.X && point.X < ScreenSize.X - ViewportPosition.X
-		&& point.Y > -ViewportPosition.Y && point.Y < ScreenSize.Y - ViewportPosition.Y;
-}
-
-public struct Position(float x, float y) {
-	public Vector2 Value = new Vector2(x, y);
-}
-
-public struct Velocity(float x, float y) {
-	public Vector2 Value = new Vector2(x, y);
-
-	public Velocity RotatedBy(float angle) {
-		Value = new Vector2(Value.X * MathF.Cos(angle), Value.Y * MathF.Sin(angle));
-		return this;
-	}
-	public Velocity Normalise() {
-		Value = new Vector2(Value.X / Value.Length(), Value.Y / Value.Length());
-		return this;
+	static bool IsOnScreen(Vector2 point, Camera2D camera) {
+		return point.X > camera.Target.X - ScreenSize.X / 2 && point.X < camera.Target.X + ScreenSize.X / 2
+			&& point.Y > camera.Target.Y - ScreenSize.Y / 2 && point.Y < camera.Target.Y + ScreenSize.Y / 2;
 	}
 }
