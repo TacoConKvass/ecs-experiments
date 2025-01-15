@@ -15,7 +15,7 @@ public class World(int worldID) {
 		return this;
 	}
 
-	public ref (SparseSet<T> DataStore, int Offset, bool Dirty) GetComponent<T>() where T : struct {
+	public ref ComponentData<T> GetComponent<T>() where T : struct {
 		return ref Component<T>.Data[ID];
 	}
 
