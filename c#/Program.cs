@@ -5,13 +5,15 @@ using System;
 using System.Numerics;
 
 public class Program {
-	static readonly int entityCount = 100_000;
+	static readonly int entityCount = 10_000;
 
-	static Vector2 ScreenSize = new Vector2(1280, 720);
+	static Vector2 ScreenSize = new Vector2(900, 900);
 	static Camera2D camera = new Camera2D(ScreenSize/ 2, Vector2.Zero, 0, 1);
 	static Texture2D magic;
 	static float deltaTimeMultiplier;
 	static float CameraSpeed = 5f;
+
+	static readonly Color[] Colors = [Color.Beige, Color.Blue, Color.Red, Color.Green];
 
 	static World MainWorld = ECS.CreateWorld()
 			.RegisterComponent<Position>()
@@ -28,10 +30,11 @@ public class Program {
 		for (int i = 0; i < entityCount; i++) {
 			MainWorld.GetEntity(i)
 				.Set<Position>(new(0, 0))
-				.Set<Velocity>(new Velocity(4, 4).RotatedBy(
+				.Set<Velocity>(new Velocity(Random.Shared.NextSingle() * 4, Random.Shared.NextSingle() * 4).RotatedBy(
 					Random.Shared.Next(-6, 6) * Random.Shared.NextSingle() * Random.Shared.NextSingle()
 				))
-				.Set<Renderable>(new(magic, new(Random.Shared.Next(255), Random.Shared.Next(255), Random.Shared.Next(255))));
+				//.Set<Renderable>(new(magic, new(Random.Shared.Next(255), Random.Shared.Next(255), Random.Shared.Next(255))));
+				.Set<Renderable>(new(magic, Colors[i % Colors.Length]));
 		}
 
 		// Raylib.SetTargetFPS(60);
@@ -78,6 +81,8 @@ public class Program {
 		if (Raylib.IsKeyDown(KeyboardKey.Z) && camera.Zoom < 2) camera.Zoom += .01f * deltaTimeMultiplier;
 		else if (camera.Zoom > 1) camera.Zoom -= .05f * deltaTimeMultiplier;
 		if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleFullscreen();
+		if (Raylib.IsKeyDown(KeyboardKey.X)) camera.Rotation += 1 * deltaTimeMultiplier;
+		else if (camera.Rotation > 0) camera.Rotation -= 1 * deltaTimeMultiplier;
 	}
 
 	static void Render(Camera2D camera, World world, Position[] position, Renderable[] renderable) {
