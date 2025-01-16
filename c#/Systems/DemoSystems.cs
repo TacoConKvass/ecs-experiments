@@ -30,6 +30,7 @@ public class DemoSystems {
 		if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleFullscreen();
 		if (Raylib.IsKeyDown(KeyboardKey.X)) camera.Rotation += 1 * Program.deltaTimeMultiplier;
 		else if (camera.Rotation > 0) camera.Rotation = Math.Clamp(camera.Rotation - 1 * Program.deltaTimeMultiplier, 0, float.PositiveInfinity);
+		if (Raylib.IsKeyPressed(KeyboardKey.Space)) ECS.SetActiveWorld(Program.Loading);
 	}
 
 	public static void Render(World world) {

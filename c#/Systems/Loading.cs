@@ -8,18 +8,19 @@ public static class LoadingScene {
 	static float frame = 0;
 
 	public static void HandleInput(World world) {
-		while (!Raylib.IsKeyPressed(KeyboardKey.Space)) {
-			frame += 0.1f;
-
-			Raylib.BeginDrawing();
-				Raylib.ClearBackground(Color.Black);
-
-				Raylib.DrawText($"Loading {dots[(int)frame % dots.Length]}", 300, 300, 20, Color.White);
-
-				Raylib.DrawFPS(20, 20);
-			Raylib.EndDrawing();
+		if (Raylib.IsKeyPressed(KeyboardKey.Nine)) {
+			ECS.SetActiveWorld(Program.Demo);
+			return;
 		}
 
-		ECS.SetActiveWorld(Program.Demo);
+		frame += 0.1f * Program.deltaTimeMultiplier;
+
+		Raylib.BeginDrawing();
+			Raylib.ClearBackground(Color.Black);
+
+			Raylib.DrawText($"Loading {dots[(int)frame % dots.Length]}", 300, 300, 20, Color.White);
+
+			Raylib.DrawFPS(20, 20);
+		Raylib.EndDrawing();
 	}
 }
