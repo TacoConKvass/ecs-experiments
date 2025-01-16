@@ -1,25 +1,26 @@
 ﻿using Core.DataStructures;
 using System;
+using System.Collections.Generic;
 
 namespace Core.ECS;
 
 public class World(int worldID) {
+	static event Action<World> OnInitialise;
+
 	public int ID = worldID;
 
 	public BitSet[] Entities = [];
 
 	int componentCount = 0;
 
-	public World RegisterComponent<T>() where T : struct {
-		Component<T>.AddToWorld(ID, componentCount++);
-		return this;
-	}
+	internal List<Action<World>> Systems = [];
+	
+	internal List<string> SystemNames = [];
 
-	public ref ComponentData<T> GetComponent<T>() where T : struct {
-		return ref Component<T>.Data[ID];
-	}
+	internal List<Action<World>> RenderSystems = [];
 
 	public World Initialise() {
+		OnInitialise?.Invoke(this);
 		Entities = new BitSet[128];
 		for (int i = 0; i < 128; i++) {
 			Entities[i] = new BitSet(componentCount);
@@ -45,6 +46,59 @@ public class World(int worldID) {
 			Entities[i] = new BitSet(componentCount);
 		}
 	}
+
+	#region Component handling
+	public World RegisterComponent<T>() where T : struct
+	{
+		Component<T>.AddToWorld(ID, componentCount++);
+		return this;
+	}
+	public World RegisterSingletonComponent<T>(T value)
+	{
+		SingletonComponent<T>.AddToWorld(ID, value);
+		return this;
+	}
+
+	public ref ComponentData<T> GetComponent<T>() where T : struct
+	{
+		return ref Component<T>.Data[ID];
+	}
+
+	public ref T GetSingletonComponent<T>()
+	{
+		return ref SingletonComponent<T>.Data[ID];
+	}
+	#endregion
+
+	#region System handling
+	public World RegisterSystem(Action<World> system, string name, string[]? after = null)
+	{
+		if (after == null)
+		{
+			Systems.Add(system);
+			SystemNames.Add(name);
+			return this;
+		}
+
+		int index = 0;
+		foreach (string systemName in after)
+		{
+			index = Math.Max(index, SystemNames.IndexOf(systemName));
+		}
+		SystemNames.Insert(index, name);
+		Systems.Insert(index, system);
+		return this;
+	}
+
+	public void InvokeSystems()
+	{
+		for (int i = 0; i < Systems.Count; i++)
+		{
+			try { Systems[i].Invoke(this); }
+			catch (Exception ex) { Console.WriteLine($"Exception {ex} caught in system {SystemNames[i]}"); }
+		}
+	}
+	#endregion
 }
 
 public struct Entity(int id, BitSet flags) {
