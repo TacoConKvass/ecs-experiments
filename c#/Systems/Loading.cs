@@ -8,8 +8,9 @@ public static class LoadingScene {
 	static float frame = 0;
 
 	public static void HandleInput(World world) {
-		if (Raylib.IsKeyPressed(KeyboardKey.Nine)) {
+		if (frame > 12) {
 			ECS.SetActiveWorld(Program.Demo);
+			frame = 0;
 			return;
 		}
 

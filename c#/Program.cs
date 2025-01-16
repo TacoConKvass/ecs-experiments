@@ -26,8 +26,7 @@ public class Program {
 		.RegisterSystem(DemoSystems.HandleInput, "InputHandling")
 		.RegisterSystem(DemoSystems.Render, "Rendering");
 
-	public static World[] Worlds = [Loading, Demo];
-
+	
 	public static void Main(string[] args) {
 		Raylib.InitWindow((int)ScreenSize.X, (int)ScreenSize.Y, "Wah");
 		Raylib.SetExitKey(KeyboardKey.Null);
