@@ -5,9 +5,9 @@ using System.Collections.Generic;
 namespace Core.ECS;
 
 public class World(int worldID) {
-	static event Action<World> OnInitialise;
+	public static event Action<World> OnInitialise;
 
-	static event Action<World> OnActivate;
+	public event Action<World> OnActivate;
 
 	public int ID = worldID;
 
@@ -18,8 +18,6 @@ public class World(int worldID) {
 	internal List<Action<World>> Systems = [];
 	
 	internal List<string> SystemNames = [];
-
-	internal List<Action<World>> RenderSystems = [];
 
 	public void Activate() {
 		OnActivate?.Invoke(this);
