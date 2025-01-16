@@ -13,6 +13,8 @@ public static class LoadingScene {
 			return;
 		}
 
+		if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleFullscreen();
+
 		frame += 0.1f * Program.deltaTimeMultiplier;
 
 		Raylib.BeginDrawing();
