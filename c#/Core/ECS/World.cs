@@ -88,8 +88,8 @@ public class World(int worldID) {
 		{
 			index = Math.Max(index, SystemNames.IndexOf(systemName));
 		}
-		SystemNames.Insert(index, name);
-		Systems.Insert(index, system);
+		SystemNames.Insert(index + 1, name);
+		Systems.Insert(index + 1, system);
 		return this;
 	}
 
