@@ -20,12 +20,12 @@ public class DemoSystems {
 	}
 
 	public static void HandleInput(World world) {
-		Camera2D camera = world.GetSingletonComponent<Camera2D>();
+		ref Camera2D camera = ref world.GetSingletonComponent<Camera2D>();
 		if (Raylib.IsKeyDown(KeyboardKey.A)) camera.Target.X -= Program.CameraSpeed * Program.deltaTimeMultiplier;
 		if (Raylib.IsKeyDown(KeyboardKey.D)) camera.Target.X += Program.CameraSpeed * Program.deltaTimeMultiplier;
 		if (Raylib.IsKeyDown(KeyboardKey.S)) camera.Target.Y += Program.CameraSpeed * Program.deltaTimeMultiplier;
 		if (Raylib.IsKeyDown(KeyboardKey.W)) camera.Target.Y -= Program.CameraSpeed * Program.deltaTimeMultiplier;
-		if (Raylib.IsKeyDown(KeyboardKey.Z) && camera.Zoom < 2) camera.Zoom += .01f * Program.deltaTimeMultiplier;
+		if (Raylib.IsKeyDown(KeyboardKey.Z)) camera.Zoom = Math.Clamp(camera.Zoom + .2f * Program.deltaTimeMultiplier, 1, 4);
 		else if (camera.Zoom > 1) camera.Zoom = Math.Clamp(camera.Zoom - .05f * Program.deltaTimeMultiplier, 1, float.PositiveInfinity);
 		if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleFullscreen();
 		if (Raylib.IsKeyDown(KeyboardKey.X)) camera.Rotation += 1 * Program.deltaTimeMultiplier;
