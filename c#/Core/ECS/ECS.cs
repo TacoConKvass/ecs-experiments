@@ -7,6 +7,7 @@ public static class ECS {
 
 	public static World SetActiveWorld(World world) {
 		ActiveWorld = world;
+		ActiveWorld.Activate();
 		return ActiveWorld;
 	}
 

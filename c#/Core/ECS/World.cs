@@ -7,6 +7,8 @@ namespace Core.ECS;
 public class World(int worldID) {
 	static event Action<World> OnInitialise;
 
+	static event Action<World> OnActivate;
+
 	public int ID = worldID;
 
 	public BitSet[] Entities = [];
@@ -19,13 +21,16 @@ public class World(int worldID) {
 
 	internal List<Action<World>> RenderSystems = [];
 
+	public void Activate() {
+		OnActivate?.Invoke(this);
+	}
+
 	public World Initialise() {
 		OnInitialise?.Invoke(this);
 		Entities = new BitSet[128];
 		for (int i = 0; i < 128; i++) {
 			Entities[i] = new BitSet(componentCount);
 		}
-		ECS.SetActiveWorld(this);
 		return this;
 	}
 
