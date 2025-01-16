@@ -6,7 +6,7 @@ using System;
 using System.Numerics;
 
 public class Program {
-	static readonly int entityCount = 250_000;
+	static readonly int entityCount = 10_000;
 
 	public static readonly Vector2 ScreenSize = new Vector2(1280, 720);
 	public static Texture2D magic;
@@ -14,7 +14,8 @@ public class Program {
 	public static float CameraSpeed = 5f;
 
 	public static World Loading = ECS.CreateWorld()
-		.RegisterSystem(LoadingScene.HandleInput, "WaitForInput");
+		.RegisterSystem(LoadingScene.HandleInput, "WaitForInput")
+		.Initialise();
 
 	public static World Demo = ECS.CreateWorld()
 		.RegisterComponent<Position>()
@@ -25,6 +26,8 @@ public class Program {
 		.RegisterSystem(DemoSystems.HandleInput, "InputHandling")
 		.RegisterSystem(DemoSystems.Render, "Rendering");
 
+	public static World[] Worlds = [Loading, Demo];
+
 	public static void Main(string[] args) {
 		Raylib.InitWindow((int)ScreenSize.X, (int)ScreenSize.Y, "Wah");
 		Raylib.SetExitKey(KeyboardKey.Null);
@@ -32,7 +35,9 @@ public class Program {
 		magic = Raylib.LoadTexture("Assets/Magic.png");
 
 		Demo.Initialise();
+		
 		Demo.OnActivate += (World world) => {
+			// World world = ECS.SetActiveWorld(Demo);
 			for (int i = 0; i < entityCount; i++) {
 				world.GetEntity(i)
 					.Set(new Position(0, 0))
@@ -45,7 +50,7 @@ public class Program {
 
 		ECS.SetActiveWorld(Loading);
 
-		Raylib.SetTargetFPS(60);
+		// Raylib.SetTargetFPS(60);
 
 		while (!Raylib.WindowShouldClose()) {
 			deltaTimeMultiplier = Raylib.GetFrameTime() * 60;
