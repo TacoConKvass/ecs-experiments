@@ -37,7 +37,7 @@ public class World(int worldID) {
 	}
 
 	public Entity GetEntity(int id) {
-		EnsureCapacity(id);
+		EnsureCapacity(id + 1);
 		return new Entity(id, Entities[id]);
 	}
 
