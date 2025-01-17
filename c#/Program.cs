@@ -6,7 +6,7 @@ using System;
 using System.Numerics;
 
 public class Program {
-	static readonly int entityCount = 10_000;
+	static readonly int entityCount = 250_000;
 
 	public static readonly Vector2 ScreenSize = new Vector2(1280, 720);
 	public static Texture2D magic;
@@ -14,7 +14,8 @@ public class Program {
 	public static float CameraSpeed = 5f;
 
 	public static World Loading = ECS.CreateWorld()
-		.RegisterSystem(LoadingScene.HandleInput, "WaitForInput")
+		.RegisterSystem(SystemType.Update, LoadingScene.Update, "Update")
+		.RegisterSystem(SystemType.Render, LoadingScene.Render, "Update")
 		.Initialise();
 
 	public static World Demo = ECS.CreateWorld()
@@ -22,9 +23,9 @@ public class Program {
 		.RegisterComponent<Velocity>()
 		.RegisterComponent<Renderable>()
 		.RegisterSingletonComponent<Camera2D>(new(ScreenSize / 2, Vector2.Zero, 0, 1))
-		.RegisterSystem(DemoSystems.MoveSquares, "MoveSquares")
-		.RegisterSystem(DemoSystems.HandleInput, "InputHandling")
-		.RegisterSystem(DemoSystems.Render, "Rendering");
+		.RegisterSystem(SystemType.Update, DemoSystems.MoveSquares, "MoveSquares")
+		.RegisterSystem(SystemType.Update, DemoSystems.HandleInput, "InputHandling")
+		.RegisterSystem(SystemType.Render, DemoSystems.Render, "Rendering");
 
 	
 	public static void Main(string[] args) {
@@ -54,7 +55,8 @@ public class Program {
 		while (!Raylib.WindowShouldClose()) {
 			deltaTimeMultiplier = Raylib.GetFrameTime() * 60;
 
-			ECS.ActiveWorld.InvokeSystems();
+			ECS.ActiveWorld.Update();
+			ECS.ActiveWorld.Render();
 		}
 
 		Raylib.CloseWindow();

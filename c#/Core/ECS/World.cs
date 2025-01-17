@@ -15,9 +15,13 @@ public class World(int worldID) {
 
 	int componentCount = 0;
 
-	internal List<Action<World>> Systems = [];
+	internal List<Action<World>> UpdateSystems = [];
 	
-	internal List<string> SystemNames = [];
+	internal List<string> UpdateSystemNames = [];
+
+	internal List<Action<World>> RenderSystems = [];
+
+	internal List<string> RenderSystemNames = [];
 
 	public void Activate() {
 		OnActivate?.Invoke(this);
@@ -51,54 +55,57 @@ public class World(int worldID) {
 	}
 
 	#region Component handling
-	public World RegisterComponent<T>() where T : struct
-	{
+	public World RegisterComponent<T>() where T : struct {
 		Component<T>.AddToWorld(ID, componentCount++);
 		return this;
 	}
-	public World RegisterSingletonComponent<T>(T value)
-	{
+	public World RegisterSingletonComponent<T>(T value) {
 		SingletonComponent<T>.AddToWorld(ID, value);
 		return this;
 	}
 
-	public ref ComponentData<T> GetComponent<T>() where T : struct
-	{
+	public ref ComponentData<T> GetComponent<T>() where T : struct {
 		return ref Component<T>.Data[ID];
 	}
 
-	public ref T GetSingletonComponent<T>()
-	{
+	public ref T GetSingletonComponent<T>() {
 		return ref SingletonComponent<T>.Data[ID];
 	}
 	#endregion
 
 	#region System handling
-	public World RegisterSystem(Action<World> system, string name, string[]? after = null)
-	{
-		if (after == null)
-		{
-			Systems.Add(system);
-			SystemNames.Add(name);
-			return this;
-		}
-
-		int index = 0;
-		foreach (string systemName in after)
-		{
-			index = Math.Max(index, SystemNames.IndexOf(systemName));
-		}
-		SystemNames.Insert(index + 1, name);
-		Systems.Insert(index + 1, system);
+	public World RegisterSystem(SystemType type, Action<World> system, string name, string[]? after = null) {
+		if (type == SystemType.Update) RegisterSystem_Internal(ref UpdateSystems, ref UpdateSystemNames, system, name, after);
+		if (type == SystemType.Render) RegisterSystem_Internal(ref RenderSystems, ref RenderSystemNames, system, name, after);
 		return this;
 	}
 
-	public void InvokeSystems()
-	{
-		for (int i = 0; i < Systems.Count; i++)
-		{
-			try { Systems[i].Invoke(this); }
-			catch (Exception ex) { Console.WriteLine($"Exception {ex} caught in system {SystemNames[i]}"); }
+	internal void RegisterSystem_Internal(ref List<Action<World>> typeSystems, ref List<string> typeSystemNames, Action<World> system, string name, string[]? after = null) {
+		if (after == null) {
+			typeSystems.Add(system);
+			typeSystemNames.Add(name);
+			return;
+		}
+
+		int index = 0;
+		foreach (string systemName in after) {
+			index = Math.Max(index, typeSystemNames.IndexOf(systemName));
+		}
+		typeSystemNames.Insert(index + 1, name);
+		typeSystems.Insert(index + 1, system);
+	}
+
+	public void Update() {
+		for (int i = 0; i < UpdateSystems.Count; i++) {
+			try { UpdateSystems[i].Invoke(this); }
+			catch (Exception ex) { Console.WriteLine($"Exception {ex} caught in system {UpdateSystemNames[i]}"); }
+		}
+	}
+
+	public void Render() {
+		for (int i = 0; i < RenderSystems.Count; i++) {
+			try { RenderSystems[i].Invoke(this); }
+			catch (Exception ex) { Console.WriteLine($"Exception {ex} caught in system {RenderSystemNames[i]}"); }
 		}
 	}
 	#endregion
@@ -117,4 +124,9 @@ public struct Entity(int id, BitSet flags) {
 		component.DataStore.Set(ID, data);
 		return this;
 	}
+}
+
+public enum SystemType : byte {
+	Update,
+	Render
 }

@@ -7,7 +7,7 @@ public static class LoadingScene {
 	static string[] dots = ["", ".", "..", "..."];
 	static float frame = 0;
 
-	public static void HandleInput(World world) {
+	public static void Update(World world) {
 		if (frame > 12) {
 			ECS.SetActiveWorld(Program.Demo);
 			frame = 0;
@@ -17,7 +17,9 @@ public static class LoadingScene {
 		if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleFullscreen();
 
 		frame += 0.1f * Program.deltaTimeMultiplier;
+	}
 
+	public static void Render(World world) {
 		Raylib.BeginDrawing();
 			Raylib.ClearBackground(Color.Black);
 
