@@ -5,9 +5,9 @@ using System.Collections.Generic;
 namespace Core.ECS;
 
 public class World(int worldID) {
-	public static event Action<World> OnInitialise;
+	public static event Action<World>? OnInitialise;
 
-	public event Action<World> OnActivate;
+	public event Action<World>? OnActivate;
 
 	public int ID = worldID;
 
