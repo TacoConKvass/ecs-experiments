@@ -1,6 +1,8 @@
 *.bat
-*/obj/
-*/bin/
+*/obj
+*/bin
 */.vs/
 /old/Zig/.zig-cache
 /old/Zig/zig-out/bin
+*/zig-out/
+*/.zig-cache/
