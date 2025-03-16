@@ -58,13 +58,12 @@ public class World {
 
 public ref struct Entity {
 	public readonly int Id;
-	public ref BitArray ComponentFlags;
+	public ref BitArray ComponentFlags => ref world.Entities.componentFlags[Id];
 
-	internal World world;
+	internal readonly World world;
 
 	public Entity(World e_world, int? id = null) {
 		Id = id ?? e_world.GetFreeId();
-		ComponentFlags = ref e_world.Entities.componentFlags[Id];
 		world = e_world;
 	}
 

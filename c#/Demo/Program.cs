@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Demo.Utils;
+using System;
 
 Console.Clear();
 
@@ -20,10 +21,12 @@ entity_from_map.Set(new Vector2(1, 1));
 Assert.Success("new_entity is the same as entity_from_map if they share the same id", new_entity.Get<Vector2>()! == entity_from_map.Get<Vector2>()!);
 
 var entity_from_map_1 = world.Entities[1];
-Assert.Success("new_entity is not the same as entity_from_map_1 as they do not share the same id", new_entity.ComponentFlags == entity_from_map_1.ComponentFlags);
+Assert.Failure("new_entity is not the same as entity_from_map_1 as they do not share the same id", new_entity.ComponentFlags == entity_from_map_1.ComponentFlags);
 
 entity_from_map.Remove<Vector2>();
 Assert.Success("Vector2 component removed from entity_from_map", entity_from_map.Get<Vector2>() == null);
+
+Assert.FinalStatus();
 
 public struct Vector2(float x, float y) {
 	public float X = x;
@@ -33,24 +36,4 @@ public struct Vector2(float x, float y) {
 
 	public static bool operator ==(Vector2 v1, Vector2 v2) => v1.X == v2.X && v1.Y == v2.Y;
 	public static bool operator !=(Vector2 v1, Vector2 v2) => v1.X != v2.X || v1.Y != v2.Y;
-}
-
-public static class Assert {
-	public static int TestNumber = 0;
-	
-	public static void Success(string test, bool expected) {
-		Console.Write($"[Test {++TestNumber} - ");
-		Console.ForegroundColor = expected ? ConsoleColor.Green : ConsoleColor.Red;
-		Console.Write($"{(expected ? "Passed \u2713" : "Failed \u274C")}");
-		Console.ResetColor();
-		Console.Write($"]: {test}\n");
-	}
-	
-	public static void Failure(string test, bool expected) {
-		Console.Write($"[Test {++TestNumber} - ");
-		Console.ForegroundColor = !expected ? ConsoleColor.Green : ConsoleColor.Red;
-		Console.Write($"{(!expected ? "Passed \u2713" : "Failed \u274C")}");
-		Console.ResetColor();
-		Console.Write($"]: {test}\n");
-	}
 }
