@@ -18,7 +18,9 @@ public class World {
 
 	internal static int lastWorldId = -1;
 
+	internal int nextEntityId = 0;
 	internal Stack<int> freeEntityIds;
+	internal List<SparseSetBase> components = [];
 
 	public int Id;
 	public int ComponentCount;
@@ -27,7 +29,7 @@ public class World {
 	public World(int initial_size = 256) {
 		Id = ++lastWorldId;
 		ComponentCount = 0;
-		freeEntityIds = new Stack<int>(Enumerable.Range(0, initial_size).Reverse());
+		freeEntityIds = new Stack<int>();
 
 		Entities = new EntityMap() {
 			componentFlags = [],
@@ -40,21 +42,22 @@ public class World {
 
 	public void AddComponent<T>() where T : struct {
 		ComponentStorage<T>.AddTo(this);
+		components.Add(GetComponent<T>().Data);
 		ComponentCount++;
 		for (int i = 0; i < Entities.componentFlags.Length; i++) {
 			Entities.componentFlags[i].Length = ComponentCount;
 		}
 	}
 
-	public ComponentStorage<T>.ComponentRecord GetComponent<T>() where T : struct => ComponentStorage<T>.GetFrom(this);
+	public ComponentRecord GetComponent<T>() where T : struct => ComponentStorage<T>.GetFrom(this);
 
 	internal int GetFreeId() {
-		return freeEntityIds.Pop();
+		return freeEntityIds.TryPop(out int id) ? id : nextEntityId++;
 	}
 }
 
 public ref struct Entity {
-	public int Id { get; init; }
+	public readonly int Id;
 	public ref BitArray ComponentFlags;
 
 	internal World world;
@@ -71,34 +74,23 @@ public ref struct Entity {
 	}
 
 	public T? Get<T>() where T : struct {
-		return ComponentStorage<T>.GetFrom(world).Data.TryGet(Id);
-	}
-
-	public bool TryGet<T>(out T? data) where T : struct {
-		data = Get<T>();
-
-		return data != null;
+		return (T?)(ComponentStorage<T>.GetFrom(world).Data.TryGet(Id));
 	}
 
 	public void Set<T>(T data) where T : struct {
-		ComponentStorage<T>.ComponentRecord component = ComponentStorage<T>.GetFrom(world);
+		ComponentRecord component = ComponentStorage<T>.GetFrom(world);
 		ComponentFlags[component.Id] = true;
 		component.Data.Set(Id, data);
 	}
 
 	public void Remove<T>() where T : struct {
-		ComponentStorage<T>.ComponentRecord component = ComponentStorage<T>.GetFrom(world);
+		ComponentRecord component = ComponentStorage<T>.GetFrom(world);
 		ComponentFlags[component.Id] = false;
 		component.Data.Delete(Id);
 	}
 }
 
 public static class ComponentStorage<T> where T : struct {
-	public ref struct ComponentRecord(int id, ref SparseSet<T> data) {
-		public int Id = id;
-		public ref SparseSet<T> Data = ref data;
-	}
-
 	internal static int[] id = [];
 	internal static SparseSet<T>?[] components = [];
 
@@ -115,6 +107,11 @@ public static class ComponentStorage<T> where T : struct {
 	}
 
 	internal static ComponentRecord GetFrom(World world) {
-		return new ComponentRecord(id[world.Id], ref components[world.Id]);
+		return new ComponentRecord(id[world.Id], components[world.Id]);
 	} 
+}
+
+public struct ComponentRecord(int id, SparseSetBase data) {
+	public int Id = id;
+	public SparseSetBase Data = data;
 }
