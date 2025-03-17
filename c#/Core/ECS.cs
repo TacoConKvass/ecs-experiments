@@ -16,13 +16,14 @@ public class World {
 			get => new Entity(world, index);
 			set => new Entity(world, index).CopyFrom(value);
 		} 
-	}	
+	}
 
 	internal static int lastWorldId = -1;
 
 	internal int nextEntityId = 0;
 	internal Stack<int> freeEntityIds;
 	internal List<SparseSetBase> components = [];
+	internal List<Type> componentTypes = [];
 
 	public int Id;
 	public int ComponentCount;
@@ -45,6 +46,7 @@ public class World {
 	public void AddComponent<T>() where T : struct {
 		ComponentStorage<T>.AddTo(this);
 		components.Add(GetComponent<T>().Data);
+		componentTypes.Add(typeof(T));
 		ComponentCount++;
 		
 		for (int i = 0; i < Entities.componentFlags.Length; i++) {
@@ -66,6 +68,10 @@ public class World {
 
 		return freeId;
 	}
+
+	// public IEnumerator<Entity> Query<TWith>() {	}
+
+	// public IEnumerator<Entity> Query<TWith, TWithout>() { }
 }
 
 public ref struct Entity {

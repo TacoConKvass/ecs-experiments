@@ -9,7 +9,7 @@ public static class Assert {
 	public static int FailedCount = 0;
 
 	public static void Success(string test, bool expected) {
-		Console.Write($"[Test {++TestNumber} - ");
+		Console.Write($"[Test {++TestNumber}{(TestNumber < 10 ? " " : "")} - ");
 		Console.ForegroundColor = expected ? ConsoleColor.Green : ConsoleColor.Red;
 		Console.Write($"{(expected ? "Passed \u2713" : "Failed \u2717")}");
 		Console.ResetColor();

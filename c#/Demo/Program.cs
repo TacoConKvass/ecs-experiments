@@ -1,5 +1,6 @@
 ﻿using Demo.Utils;
 using System;
+using System.Collections;
 
 Console.Clear();
 
@@ -29,7 +30,26 @@ Assert.Success("Data of world.Entities[0] copied to world.Entities[1]", new_enti
 entity_from_map.Remove<Vector2>();
 Assert.Success("Vector2 component removed from entity_from_map", entity_from_map.Get<Vector2>() == null);
 
+world.AddComponent<int>();
+var component_int = world.GetComponent<int>();
+Assert.Success("Component of type int has id 1", component_int.Id == 1);
 
+var vector2_mask = ECS.QueryCache.MakeMask<Vector2>(world);
+var mask_10 = new BitArray(2);
+mask_10[0] = true;
+Assert.Success("Mask for Vector2 is equal to 10", vector2_mask.BinaryValues() == mask_10.BinaryValues());
+
+var int_mask = ECS.QueryCache.MakeMask<int>(world);
+var mask_01 = new BitArray(2);
+mask_01[1] = true;
+Assert.Success("Mask for int is equal to 01", int_mask.BinaryValues() == mask_01.BinaryValues());
+
+
+var and_mask = ECS.QueryCache.MakeMask<ECS.And<Vector2, int>>(world);
+var mask_11 = new BitArray(2);
+mask_11[0] = true;
+mask_11[1] = true;
+Assert.Success("Mask for And<Vector2, int> is equal to 11", and_mask.BinaryValues() == mask_11.BinaryValues());
 
 Assert.FinalStatus();
 
