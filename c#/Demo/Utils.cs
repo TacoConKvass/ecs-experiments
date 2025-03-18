@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Demo.Utils;
 
-public static class Assert {
+public static class Expect {
 	public static int TestNumber = 0;
 	public static int FailedCount = 0;
 
