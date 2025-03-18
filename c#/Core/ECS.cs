@@ -22,8 +22,10 @@ public class World {
 
 	internal int nextEntityId = 0;
 	internal Stack<int> freeEntityIds;
+	
 	internal List<SparseSetBase> components = [];
 	internal List<Type> componentTypes = [];
+	internal BitArray dirtyComponents = new BitArray(0);
 
 	public int Id;
 	public int ComponentCount;
@@ -48,6 +50,7 @@ public class World {
 		components.Add(GetComponent<T>().Data);
 		componentTypes.Add(typeof(T));
 		ComponentCount++;
+		dirtyComponents.Length = ComponentCount;
 		
 		for (int i = 0; i < Entities.componentFlags.Length; i++) {
 			Entities.componentFlags[i].Length = ComponentCount;
@@ -57,28 +60,30 @@ public class World {
 	public ComponentRecord GetComponent<T>() where T : struct => ComponentStorage<T>.GetFrom(this);
 
 	internal int GetFreeId() {
-		int freeId = freeEntityIds.TryPop(out int id) ? id : nextEntityId++;
+		int free_id = freeEntityIds.TryPop(out int id) ? id : nextEntityId++;
 		
-		if (freeId >= Entities.componentFlags.Length) {
+		if (free_id >= Entities.componentFlags.Length) {
 			int old_length = Entities.componentFlags.Length;
 			
-			Array.Resize(ref Entities.componentFlags, Math.Max(freeId, old_length * 2));
+			Array.Resize(ref Entities.componentFlags, Math.Max(free_id, old_length * 2));
 			for (int i = old_length; i < Entities.componentFlags.Length; i++) Entities.componentFlags[i] = new BitArray(ComponentCount);
 		}
 
-		return freeId;
+		return free_id;
 	}
 
-	// public IEnumerator<Entity> Query<TWith>() {	}
+	public int[] Query<TWith>() where TWith : struct {
+		return QueryCache.Execute<TWith>(this);
+	}
 
-	// public IEnumerator<Entity> Query<TWith, TWithout>() { }
+	// public IEnumerator<Entity> Query<TWith, TWithout>() where TWith : struct where TWithout : struct { }
 }
 
 public ref struct Entity {
-	public readonly int Id;
-	
 	internal readonly World world;
 	internal ref BitArray componentFlags;
+	
+	public readonly int Id;
 	
 	public Entity(World e_world, int? id = null) {
 		Id = id ?? e_world.GetFreeId();
@@ -97,12 +102,14 @@ public ref struct Entity {
 
 	public void Set<T>(T data) where T : struct {
 		ComponentRecord component = world.GetComponent<T>();
+		if (!componentFlags[component.Id]) world.dirtyComponents[component.Id] = true;
 		componentFlags[component.Id] = true;
 		component.Data.Set(Id, data);
 	}
 
 	public void Remove<T>() where T : struct {
 		ComponentRecord component = world.GetComponent<T>();
+		if (componentFlags[component.Id]) world.dirtyComponents[component.Id] = true;
 		componentFlags[component.Id] = false;
 		component.Data.Delete(Id);
 	}
