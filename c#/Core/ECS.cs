@@ -84,11 +84,11 @@ public ref struct Entity {
 	internal ref BitArray componentFlags;
 	
 	public readonly int Id;
-	
-	public Entity(World e_world, int? id = null) {
-		Id = id ?? e_world.GetFreeId();
-		world = e_world;
-		componentFlags = ref world.Entities.componentFlags[Id];
+
+	public Entity(World hostWorld, int? id = null) {
+		world = hostWorld;
+		Id = id ?? hostWorld.GetFreeId();
+		componentFlags = ref hostWorld.Entities.componentFlags[Id];
 	}
 
 	public bool Has<T>() where T : struct {
@@ -125,9 +125,15 @@ public ref struct Entity {
 
 	public void CopyFrom(Entity incoming) {
 		for (int i = 0; i < world.ComponentCount; i++) {
-			if (!incoming.componentFlags[i]) continue;
+			bool shouldHave = incoming.componentFlags[i];
 
-			world.components[i].Set(Id, incoming.world.components[i].TryGet(incoming.Id));
+			componentFlags[i] = shouldHave;
+			if (shouldHave) {
+				world.components[i].Set(Id, incoming.world.components[i].TryGet(incoming.Id));
+				return;
+			}
+
+			world.components[i].Delete(Id);
 		}
 	}
 }

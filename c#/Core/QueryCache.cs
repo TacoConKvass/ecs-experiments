@@ -8,6 +8,8 @@ namespace ECS;
 internal static class QueryCache {
 	internal static Dictionary<Type, BitArray>[] maskCache = [];
 
+	internal static MethodInfo method = typeof(QueryCache).GetMethod("MakeMask", BindingFlags.NonPublic | BindingFlags.Static)!;
+	
 	internal static BitArray MakeMask<T>(World world) where T : struct {
 		int id = world.Id;
 		if (id >= maskCache.Length) {
@@ -24,7 +26,6 @@ internal static class QueryCache {
 		if (type.IsGenericType) {
 			if (type.GetGenericTypeDefinition() == typeof(And<,>).GetGenericTypeDefinition()) {
 				Type[] types = type.GetGenericArguments();
-				MethodInfo method = typeof(QueryCache).GetMethod("MakeMask", BindingFlags.NonPublic | BindingFlags.Static)!;
 
 				mask.Or((BitArray)method.MakeGenericMethod(types[0]).Invoke(null, [world])!);
 				mask.Or((BitArray)method.MakeGenericMethod(types[1]).Invoke(null, [world])!);

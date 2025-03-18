@@ -18,18 +18,19 @@ var new_entity = new ECS.Entity(world);
 new_entity.Set(Vector2.Zero);
 Assert.Success("BitArray values matches between Entity instance and world.Entities", new_entity.componentFlags == world.Entities.componentFlags[0]);
 
-var entity_from_map = world.Entities[0];
-entity_from_map.Set(new Vector2(1, 1));
-Assert.Success("new_entity is the same as entity_from_map if they share the same id", new_entity.Get<Vector2>()! == entity_from_map.Get<Vector2>()!);
+var entity_0 = world.Entities[0];
+entity_0.Set(new Vector2(1, 1));
+Assert.Success("new_entity is the same as entity_0 if they share the same id", new_entity.Get<Vector2>()! == entity_0.Get<Vector2>()!);
 
-var entity_from_map_1 = world.Entities[1];
-Assert.Failure("new_entity is not the same as entity_from_map_1 as they do not share the same id", new_entity.componentFlags.BinaryValues() == entity_from_map_1.componentFlags.BinaryValues());
+var entity_1 = world.Entities[1];
+Assert.Failure("new_entity is not the same as entity_1 as they do not share the same id", new_entity.componentFlags.BinaryValues() == entity_1.componentFlags.BinaryValues());
 
-world.Entities[1] = entity_from_map;
-Assert.Success("Data of world.Entities[0] copied to world.Entities[1]", new_entity.Get<Vector2>()! == entity_from_map.Get<Vector2>()!);
+world.Entities[1] = entity_0;
+Assert.Success("Data of world.Entities[0] copied to world.Entities[1]", new_entity.Get<Vector2>()! == entity_0.Get<Vector2>()!);
 
-entity_from_map.Remove<Vector2>();
-Assert.Success("Vector2 component removed from entity_from_map", entity_from_map.Get<Vector2>() == null);
+entity_0.Remove<Vector2>();
+Assert.Success("Vector2 component removed from entity", entity_0.Get<Vector2>() == null);
+Assert.Success("entity_1 still has the Vector2 component", entity_1.Has<Vector2>());
 
 world.AddComponent<int>();
 var component_int = world.GetComponent<int>();
@@ -48,9 +49,7 @@ var mask_11 = new BitArray([true, true]);
 Assert.Success("Mask for And<Vector2, int> is equal to 11", and_mask.BinaryValues() == mask_11.BinaryValues());
 
 var entities_with_Vector2 = world.Query<Vector2>();
-entity_from_map_1.Set(Vector2.Zero);
-Console.WriteLine(string.Join(" ", world.Entities.componentFlags.Select(x => x.BinaryValues())));
-Assert.Failure("The id of the first entity with a Vector2 component is not 0", true); 
+Assert.Failure("The id of the first entity with a Vector2 component is not 0", entities_with_Vector2[0] == 0); 
 
 Assert.FinalStatus();
 
