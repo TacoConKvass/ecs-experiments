@@ -40,31 +40,60 @@ internal static class QueryCache {
 		return mask;
 	}
 
-	internal static Dictionary<Type, int[]>[] queryCache = [];
+	internal static Dictionary<Type, int[]>[] withQueryCache = [];
 
 	internal static int[] Execute<TWith>(World world) where TWith : struct {
 		int id = world.Id;
-		if (id >= queryCache.Length) {
-			Array.Resize(ref queryCache, id + 1);
-			queryCache[id] = [];
+		if (id >= withQueryCache.Length) {
+			Array.Resize(ref withQueryCache, id + 1);
+			withQueryCache[id] = [];
 		}
 		
 		BitArray mask = MakeMask<TWith>(world);
 		BitArray dirty = new BitArray(mask).And(world.dirtyComponents);
 
-		if (!dirty.HasAnySet() && queryCache[id].TryGetValue(typeof(TWith), out int[] entities)) return entities;
+		if (!dirty.HasAnySet() && withQueryCache[id].TryGetValue(typeof(TWith), out int[] entities)) return entities;
 
 		List<int> entities_to_return = [];
 		for (int i = 0; i < world.Entities.componentFlags.Length; i++) {
 			BitArray entity_mask = world.Entities.componentFlags[i];
-			BitArray included_mask = new BitArray(entity_mask).Not().Xor(mask);
+			BitArray included_mask = new BitArray(entity_mask).And(mask).Not().Xor(mask);
 			
 			if (included_mask.HasAllSet()) 
 				entities_to_return.Add(i);
 		}
 
 		entities = entities_to_return.ToArray();
-		queryCache[id][typeof(TWith)] = entities;
+		withQueryCache[id][typeof(TWith)] = entities;
+		return entities;
+	}
+	
+	internal static Dictionary<Type, int[]>[] with_withoutQueryCache = [];
+
+	internal static int[] Execute<TWith, TWithout>(World world) where TWith : struct where TWithout : struct {
+		int id = world.Id;
+		if (id >= with_withoutQueryCache.Length) {
+			Array.Resize(ref with_withoutQueryCache, id + 1);
+			with_withoutQueryCache[id] = [];
+		}
+		
+		BitArray mask = MakeMask<TWith>(world);
+		BitArray dirty = new BitArray(mask).And(world.dirtyComponents);
+
+		if (!dirty.HasAnySet() && with_withoutQueryCache[id].TryGetValue(typeof(TWith), out int[] entities)) return entities;
+
+		List<int> entities_to_return = [];
+		for (int i = 0; i < world.Entities.componentFlags.Length; i++) {
+			BitArray entity_mask = world.Entities.componentFlags[i];
+			BitArray included_mask = new BitArray(entity_mask).And(mask).Not().Xor(mask);
+			BitArray excluded_mask = new BitArray(entity_mask).And(mask);
+
+			if (included_mask.HasAllSet() && !excluded_mask.HasAnySet()) 
+				entities_to_return.Add(i);
+		}
+
+		entities = entities_to_return.ToArray();
+		with_withoutQueryCache[id][typeof(TWith)] = entities;
 		return entities;
 	}
 }

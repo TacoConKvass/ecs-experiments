@@ -48,6 +48,10 @@ var and_mask = ECS.QueryCache.MakeMask<ECS.And<Vector2, int>>(world);
 var mask_11 = new BitArray([true, true]);
 Expect.Success("Mask for And<Vector2, int> is equal to 11", and_mask.BinaryValues() == mask_11.BinaryValues());
 
+entity_0.Set<int>(1);
+entity_1.Set<int>(10);
+world.Entities[2].Set<Vector2>(Vector2.Zero);
+
 var entities_with_Vector2 = world.Query<Vector2>();
 Expect.Failure("The id of the first entity with a Vector2 component is not 0", entities_with_Vector2[0] == 0); 
 

@@ -76,7 +76,9 @@ public class World {
 		return QueryCache.Execute<TWith>(this);
 	}
 
-	// public IEnumerator<Entity> Query<TWith, TWithout>() where TWith : struct where TWithout : struct { }
+	public int[] Query<TWith, TWithout>() where TWith : struct where TWithout : struct {
+		return QueryCache.Execute<TWith, TWithout>(this);
+	}
 }
 
 public ref struct Entity {
