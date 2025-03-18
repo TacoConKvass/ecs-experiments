@@ -102,18 +102,20 @@ public ref struct Entity {
 		return (T?)world.GetComponent<T>().Data.TryGet(Id);
 	}
 
-	public void Set<T>(T data) where T : struct {
+	public Entity Set<T>(T data) where T : struct {
 		ComponentRecord component = world.GetComponent<T>();
 		if (!componentFlags[component.Id]) world.dirtyComponents[component.Id] = true;
 		componentFlags[component.Id] = true;
 		component.Data.Set(Id, data);
+		return this;
 	}
 
-	public void Remove<T>() where T : struct {
+	public Entity Remove<T>() where T : struct {
 		ComponentRecord component = world.GetComponent<T>();
 		if (componentFlags[component.Id]) world.dirtyComponents[component.Id] = true;
 		componentFlags[component.Id] = false;
 		component.Data.Delete(Id);
+		return this;
 	}
 
 	public void Destroy() {
