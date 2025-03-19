@@ -60,11 +60,11 @@ Expect.Failure("The id of the first entity with a Vector2 component is not 0", e
 Expect.FinalStatus();
 
 public struct Vector2(float x, float y) {
-	public float X = x;
-	public float Y = y;
+    public float X = x;
+    public float Y = y;
 
-	public static Vector2 Zero => new Vector2(0, 0);
+    public static Vector2 Zero => new Vector2(0, 0);
 
-	public static bool operator ==(Vector2 v1, Vector2 v2) => v1.X == v2.X && v1.Y == v2.Y;
-	public static bool operator !=(Vector2 v1, Vector2 v2) => v1.X != v2.X || v1.Y != v2.Y;
+    public static bool operator ==(Vector2 v1, Vector2 v2) => v1.X == v2.X && v1.Y == v2.Y;
+    public static bool operator !=(Vector2 v1, Vector2 v2) => v1.X != v2.X || v1.Y != v2.Y;
 }
