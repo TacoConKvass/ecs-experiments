@@ -102,6 +102,10 @@ public ref struct Entity {
         return (T?)world.GetComponent<T>().Data.TryGet(Id);
     }
 
+    public ref T GetRef<T>() where T : struct {
+        return ref ComponentStorage<T>.GetDirectFrom(world).Data.GetRef(Id);
+    }
+
     public Entity Set<T>(T data) where T : struct {
         ComponentRecord component = world.GetComponent<T>();
         if (!componentFlags[component.Id]) world.dirtyComponents[component.Id] = true;
@@ -160,10 +164,19 @@ public static class ComponentStorage<T> where T : struct {
 
     internal static ComponentRecord GetFrom(World world) {
         return new ComponentRecord(id[world.Id], components[world.Id]);
-    } 
+    }
+
+    internal static ComponentRecord<T> GetDirectFrom(World world) {
+        return new ComponentRecord<T>(id[world.Id], components[world.Id]);
+    }
 }
 
 public struct ComponentRecord(int id, SparseSetBase data) {
     public int Id = id;
     public SparseSetBase Data = data;
+}
+
+public struct ComponentRecord<T>(int id, SparseSet<T> data) where T : struct {
+    public int Id = id;
+    public SparseSet<T> Data = data;
 }

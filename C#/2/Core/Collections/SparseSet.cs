@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace ECS.Collections;
 
@@ -9,11 +10,21 @@ public class SparseSet<T> : SparseSetBase where T : struct {
     public List<int> Dense = [];
     public List<T> Data = [];
 
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_items")]
+    private extern static ref T[] GetArray(List<T> list);
+
     internal T? _TryGet(int index) {
         if (index > Sparse.Length) return null;
         if (Sparse[index] == -1) return null;
 
         return Data[Sparse[index]];
+    }
+
+    internal ref T GetRef(int index) {
+        if (index > Sparse.Length) throw new ArgumentOutOfRangeException("Entity index", "Only access by ref if you are sure the entity has the component");
+        if (Sparse[index] == -1) throw new ArgumentOutOfRangeException("Entity index", "Only access by ref if you are sure the entity has the component");
+
+        return ref GetArray(Data)[Sparse[index]];
     }
 
     internal void _Set(int index, T data) {
