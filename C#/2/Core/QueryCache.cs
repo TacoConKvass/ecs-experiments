@@ -116,5 +116,9 @@ public class QueryResult(World hostWorld, int[] entity_ids) : IEnumerable<int> {
             yield return id;
     }
 
+    public int this[int index] {
+        get => entityIds[index];
+    }
+
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
