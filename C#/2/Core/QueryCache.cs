@@ -40,9 +40,9 @@ internal static class QueryCache {
         return mask;
     }
 
-    internal static Dictionary<Type, int[]>[] withQueryCache = [];
+    internal static Dictionary<Type, QueryResult>[] withQueryCache = [];
 
-    internal static int[] Execute<TWith>(World world) where TWith : struct {
+    internal static QueryResult Execute<TWith>(World world) where TWith : struct {
         int id = world.Id;
         if (id >= withQueryCache.Length) {
             Array.Resize(ref withQueryCache, id + 1);
@@ -52,7 +52,7 @@ internal static class QueryCache {
         BitArray mask = MakeMask<TWith>(world);
         BitArray dirty = new BitArray(mask).And(world.dirtyComponents);
 
-        if (!dirty.HasAnySet() && withQueryCache[id].TryGetValue(typeof(TWith), out int[] entities)) return entities;
+        if (!dirty.HasAnySet() && withQueryCache[id].TryGetValue(typeof(TWith), out QueryResult entities)) return entities;
 
         List<int> entities_to_return = [];
         for (int i = 0; i < world.Entities.componentFlags.Length; i++) {
@@ -63,39 +63,58 @@ internal static class QueryCache {
                 entities_to_return.Add(i);
         }
 
-        entities = entities_to_return.ToArray();
+        entities = new QueryResult(world, entities_to_return.ToArray());
         withQueryCache[id][typeof(TWith)] = entities;
         return entities;
     }
     
-    internal static Dictionary<Type, int[]>[] with_withoutQueryCache = [];
+    internal static Dictionary<Type, QueryResult>[] with_withoutQueryCache = [];
 
-    internal static int[] Execute<TWith, TWithout>(World world) where TWith : struct where TWithout : struct {
+    internal static QueryResult Execute<TWith, TWithout>(World world) where TWith : struct where TWithout : struct {
         int id = world.Id;
         if (id >= with_withoutQueryCache.Length) {
             Array.Resize(ref with_withoutQueryCache, id + 1);
             with_withoutQueryCache[id] = [];
         }
         
-        BitArray mask = MakeMask<TWith>(world);
-        BitArray dirty = new BitArray(mask).And(world.dirtyComponents);
+        BitArray with_mask = MakeMask<TWith>(world);
+        BitArray without_mask = MakeMask<TWithout>(world);
+        BitArray dirty = new BitArray(((BitArray)with_mask.Clone()).Or(without_mask)).And(world.dirtyComponents);
 
-        if (!dirty.HasAnySet() && with_withoutQueryCache[id].TryGetValue(typeof(TWith), out int[] entities)) return entities;
+        if (!dirty.HasAnySet() && with_withoutQueryCache[id].TryGetValue(typeof(TWith), out QueryResult entities)) return entities;
 
         List<int> entities_to_return = [];
         for (int i = 0; i < world.Entities.componentFlags.Length; i++) {
             BitArray entity_mask = world.Entities.componentFlags[i];
-            BitArray included_mask = new BitArray(entity_mask).And(mask).Not().Xor(mask);
-            BitArray excluded_mask = new BitArray(entity_mask).And(mask);
+            BitArray included_mask = new BitArray(entity_mask).And(with_mask).Not().Xor(with_mask);
+            BitArray excluded_mask = new BitArray(entity_mask).And(without_mask);
 
             if (included_mask.HasAllSet() && !excluded_mask.HasAnySet()) 
                 entities_to_return.Add(i);
         }
 
-        entities = entities_to_return.ToArray();
+        entities = new QueryResult(world, entities_to_return.ToArray());
         with_withoutQueryCache[id][typeof(TWith)] = entities;
         return entities;
     }
 }
 
 public struct And<T1, T2> { }
+
+public class QueryResult(World hostWorld, int[] entity_ids) : IEnumerable<int> {
+    public readonly World world = hostWorld;
+    public int[] entityIds = entity_ids;
+
+    public void ForEach(Action<Entity> action) {
+        foreach (int id in entityIds) {
+            action(world.Entities[id]);
+        }
+    }
+
+    public IEnumerator<int> GetEnumerator() {
+        foreach (int id in entityIds) 
+            yield return id;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
