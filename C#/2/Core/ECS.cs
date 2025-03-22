@@ -45,7 +45,7 @@ public class World {
         for (int i = 0; i < initial_size; i++) Entities.componentFlags[i] = new BitArray(ComponentCount);
     }
 
-    public void AddComponent<T>() where T : struct {
+    public World AddComponent<T>() where T : struct {
         ComponentStorage<T>.AddTo(this);
         components.Add(GetComponent<T>().Data);
         componentTypes.Add(typeof(T));
@@ -55,6 +55,8 @@ public class World {
         for (int i = 0; i < Entities.componentFlags.Length; i++) {
             Entities.componentFlags[i].Length = ComponentCount;
         }
+
+        return this;
     }
 
     public ComponentRecord GetComponent<T>() where T : struct => ComponentStorage<T>.GetFrom(this);
@@ -72,11 +74,11 @@ public class World {
         return free_id;
     }
 
-    public int[] Query<TWith>() where TWith : struct {
+    public QueryResult Query<TWith>() where TWith : struct {
         return QueryCache.Execute<TWith>(this);
     }
 
-    public int[] Query<TWith, TWithout>() where TWith : struct where TWithout : struct {
+    public QueryResult Query<TWith, TWithout>() where TWith : struct where TWithout : struct {
         return QueryCache.Execute<TWith, TWithout>(this);
     }
 }
