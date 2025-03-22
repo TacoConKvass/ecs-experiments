@@ -20,16 +20,16 @@ Expect.Success("BitArray values matches between Entity instance and world.Entiti
 
 var entity_0 = world.Entities[0];
 entity_0.Set(new Vector2(1, 1));
-Expect.Success("new_entity is the same as entity_0 if they share the same id", new_entity.Get<Vector2>()! == entity_0.Get<Vector2>()!);
+Expect.Success("new_entity is the same as entity_0 if they share the same id", new_entity.GetSafe<Vector2>() == entity_0.Get<Vector2>());
 
 var entity_1 = world.Entities[1];
 Expect.Failure("new_entity is not the same as entity_1 as they do not share the same id", new_entity.componentFlags.BinaryValues() == entity_1.componentFlags.BinaryValues());
 
 world.Entities[1] = entity_0;
-Expect.Success("Data of world.Entities[0] copied to world.Entities[1]", new_entity.Get<Vector2>()! == entity_0.Get<Vector2>()!);
+Expect.Success("Data of world.Entities[0] copied to world.Entities[1]", new_entity.Get<Vector2>() == entity_0.Get<Vector2>());
 
 entity_0.Remove<Vector2>();
-Expect.Success("Vector2 component removed from entity", entity_0.Get<Vector2>() == null);
+Expect.Success("Vector2 component removed from entity", entity_0.GetSafe<Vector2>() == null);
 Expect.Success("entity_1 still has the Vector2 component", entity_1.Has<Vector2>());
 
 world.AddComponent<int>();

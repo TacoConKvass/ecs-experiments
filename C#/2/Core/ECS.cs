@@ -47,7 +47,7 @@ public class World {
 
     public World AddComponent<T>() where T : struct {
         ComponentStorage<T>.AddTo(this);
-        components.Add(GetComponent<T>().Data);
+        components.Add((SparseSetBase)ComponentStorage<T>.GetFrom(this).Data);
         componentTypes.Add(typeof(T));
         ComponentCount++;
         dirtyComponents.Length = ComponentCount;
@@ -59,7 +59,9 @@ public class World {
         return this;
     }
 
-    public ComponentRecord GetComponent<T>() where T : struct => ComponentStorage<T>.GetFrom(this);
+    public ComponentRecord<T> GetComponent<T>() where T : struct => ComponentStorage<T>.GetFrom(this);
+    
+    internal SparseSetBase GetComponentById(int id) => components[id];
 
     internal int GetFreeId() {
         int free_id = freeEntityIds.TryPop(out int id) ? id : nextEntityId++;
@@ -100,16 +102,20 @@ public ref struct Entity {
         return componentFlags[index];
     }
 
-    public T? Get<T>() where T : struct {
-        return (T?)world.GetComponent<T>().Data.TryGet(Id);
+    public object? GetById(int id) {
+        return world.GetComponentById(id).TryGet(Id);
     }
 
-    public ref T GetRef<T>() where T : struct {
-        return ref ComponentStorage<T>.GetDirectFrom(world).Data.GetRef(Id);
+    public ref T Get<T>() where T : struct {
+        return ref ComponentStorage<T>.GetFrom(world).Data.GetRef(Id);
+    }
+
+    public T? GetSafe<T>() where T : struct {
+        return (T?)GetById(world.GetComponent<T>().Id);
     }
 
     public Entity Set<T>(T data) where T : struct {
-        ComponentRecord component = world.GetComponent<T>();
+        ComponentRecord<T> component = world.GetComponent<T>();
         if (!componentFlags[component.Id]) world.dirtyComponents[component.Id] = true;
         componentFlags[component.Id] = true;
         component.Data.Set(Id, data);
@@ -117,7 +123,7 @@ public ref struct Entity {
     }
 
     public Entity Remove<T>() where T : struct {
-        ComponentRecord component = world.GetComponent<T>();
+        ComponentRecord<T> component = world.GetComponent<T>();
         if (componentFlags[component.Id]) world.dirtyComponents[component.Id] = true;
         componentFlags[component.Id] = false;
         component.Data.Delete(Id);
@@ -164,18 +170,9 @@ public static class ComponentStorage<T> where T : struct {
         components[world.Id] = new SparseSet<T>();
     }
 
-    internal static ComponentRecord GetFrom(World world) {
-        return new ComponentRecord(id[world.Id], components[world.Id]);
-    }
-
-    internal static ComponentRecord<T> GetDirectFrom(World world) {
+    internal static ComponentRecord<T> GetFrom(World world) {
         return new ComponentRecord<T>(id[world.Id], components[world.Id]);
     }
-}
-
-public struct ComponentRecord(int id, SparseSetBase data) {
-    public int Id = id;
-    public SparseSetBase Data = data;
 }
 
 public struct ComponentRecord<T>(int id, SparseSet<T> data) where T : struct {
