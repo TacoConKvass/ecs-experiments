@@ -83,6 +83,11 @@ public class World {
     public QueryResult Query<TWith, TWithout>() where TWith : struct where TWithout : struct {
         return QueryCache.Execute<TWith, TWithout>(this);
     }
+
+    public World SetDirty<T>(bool value) where T : struct {
+        dirtyComponents[GetComponent<T>().Id] = value;
+        return this;
+    }
 }
 
 public ref struct Entity {
