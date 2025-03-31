@@ -90,9 +90,9 @@ public class World {
     }
 }
 
-public ref struct Entity {
+public readonly ref struct Entity {
     internal readonly World world;
-    internal ref BitArray componentFlags;
+    internal readonly ref BitArray componentFlags;
     
     public readonly int Id;
 
